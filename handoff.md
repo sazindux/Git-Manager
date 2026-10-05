@@ -1,5 +1,5 @@
 # HANDOFF
-Updated: 2026-10-05T17:00Z · Last task touched: T5 · Branch: main
+Updated: 2026-10-05T17:00Z · Last task touched: T6 · Branch: main
 
 ## Task status
 | ID | Task | Status | Commit |
@@ -10,7 +10,7 @@ Updated: 2026-10-05T17:00Z · Last task touched: T5 · Branch: main
 | T3 | Frontend shell & glass UI | done | 80d4af5 |
 | T4 | Repository dashboard | done | 4914a23 |
 | T5 | Bulk engine & safety modals | done | 42634a3 |
-| T6 | Bulk actions: visibility/archive/topics/delete | pending | |
+| T6 | Bulk actions: visibility/archive/topics/delete | done | 606eb7d |
 | T7 | Bulk transfer | pending | |
 | T8 | Cleanup tools | pending | |
 | T9 | Analytics | pending | |
@@ -18,12 +18,11 @@ Updated: 2026-10-05T17:00Z · Last task touched: T5 · Branch: main
 | T11 | Docs & final QA | pending | |
 
 ## Current / next action
-Start T6: in `lib/repos.js` add handlers `patchRepo` (body only `private`/`archived` booleans, reject other keys → 400),
-`deleteRepo` (204), `putTopics` (`{mode, names}`; GET existing → merge → normalize via `normalizeTopics` → ≤20 → PUT);
-register in `lib/app.js` under `requireSession` + `validateTarget`; add tests in `test/repos.test.js` (reuse `authed`/`mockFetch`).
-Frontend: create `public/assets/js/actions.js` listening to `on('bulk-action', {type})` → `selectedRepos()` → modal
-(`confirmDelete/confirmMakePublic/confirmSimple/promptText` from modals.js) → `bulkPanel.instance.run({... options: writeOptions()})`
-with `onItemOk` calling `updateRepo`/`removeRepos`. Disable `[data-action=delete]` button when `!hasScope('delete_repo')` (title explains).
+Start T7: backend `transferRepo` in `lib/repos.js` (body `{new_owner, new_name?}` validated with `isValidOwner`/`isValidRepo`,
+`POST {path}/transfer`, accept 202 via `okStatuses`, return `{status: 202, repo: trimRepo(data)}`), register
+`app.post('/repos/:owner/:repo/transfer', requireSession, validateTarget, transferRepo)`, add tests to `test/mutations.test.js`.
+Frontend transfer flow already exists in `actions.js#runTransfer` (promptText → confirmTransfer → runner, 202 → badge
+"Transfer pending → owner" or removal when owner changed). Verify end-to-end with mock (`/transfer` returns 202), then handoff.
 
 ## Key facts
 - Entry pattern: `api/[...route].js` → `import { handle } from 'hono/vercel'`, `export const config = { runtime: 'edge' }`,
@@ -36,7 +35,7 @@ with `onItemOk` calling `updateRepo`/`removeRepos`. Disable `[data-action=delete
   - `lib/oauth.js` → `getEnv(c)` (c.env if has SESSION_SECRET else process.env), `appOrigin(c)`, handlers `login/callback/logout/me`, middleware `requireSession` (sets `c.var.session = {token, login, id}`).
   - `lib/github.js` → `ghFetch(token, path, {method, body, okStatuses, headers})` → `{status, data, rate, headers}`; throws `GitHubError(status, code, message, {retryAfter, rate})`; `mapError`, `rateInfo`, `applyRateHeaders(c, rate)`.
   - `lib/validate.js` → `isValidOwner/Repo/Branch`, `encodeBranch`, `normalizeTopic(s)`, `parsePositiveInt`, `MAX_TOPICS`.
-  - `lib/repos.js` → `trimRepo`, `validateTarget` middleware (sets `c.var.target = {owner, repo, path}`), `listRepos`.
+  - `lib/repos.js` → `trimRepo`, `validateTarget` middleware (sets `c.var.target = {owner, repo, path}`), `listRepos`, `patchRepo`, `deleteRepo`, `mergeTopics` (pure), `putTopics`, helpers `readJsonBody(c)`, `bad(c, msg)` (400 `bad_request`).
   - `api/[...route].js` → thin Vercel edge entry.
   - `src/styles.css` → Tailwind + components: `.glass .glass-strong .btn .btn-primary .btn-ghost .btn-danger .btn-warn .input .badge .badge-ok .badge-warn .badge-danger .progress .progress-bar`.
   - `public/index.html` → views `#view-loading/#view-landing/#view-dashboard`, header (avatar `#user-avatar`, `#user-login`, `#rate-badge`, `#btn-logout`), tab buttons `[data-tab]`, sections `#tab-repos` (`#repos-panel`), `#tab-cleanup`, `#tab-analytics`, `#toasts`, `#modal-root`. Script: `/assets/js/main.js` (module).
@@ -45,13 +44,14 @@ with `onItemOk` calling `updateRepo`/`removeRepos`. Disable `[data-action=delete
   - `public/assets/js/api.js` → `api/get/post/patch/put/del`, `ApiError` (status, code, retryAfter, isRateLimit), `describeError(err)`; emits `unauthorized` on 401; reads X-RateLimit headers.
   - `public/assets/js/toast.js` → `toast(msg, kind)`, `success/error/info`.
   - `public/assets/js/main.js` → bootstrap (`/api/me`), views, tabs, logout, `?error=` toasts; dynamically imports `dashboard.js`.
-  - `public/assets/js/dashboard.js` → `initDashboard()`: creates `bulkPanel.instance = new BulkPanel($('#bulk-panel'))` (exported), mounts `initGrid(#repos-panel)`.
+  - `public/assets/js/dashboard.js` → `initDashboard()`: creates `bulkPanel.instance = new BulkPanel($('#bulk-panel'))` (exported), mounts `initGrid(#repos-panel)`, `initActions(bulkPanel)`.
+  - `public/assets/js/actions.js` → listens `bulk-action`; `runVisibility/runArchive/runDelete/runTopics/runTransfer` (modal → `bulkPanel.run` with `writeOptions()` → `updateRepo/removeRepos`); `updateScopeState()` disables `[data-action]` buttons lacking scope (`delete_repo`/`repo`) with explanatory title; `repoPath(r)` helper.
   - `public/assets/js/bulk.js` → pure `runBulk(items, fn, {concurrency, minGapMs, signal, onProgress, now, sleep})` → `{results:[{item,key,status,value,error,errorCode,attempts}], cancelled}`; `writeOptions()` (1 worker, 1000 ms gap), `readOptions()` (4 workers); `BulkPanel.run({title, action, items, perItemFn, options, onItemOk, onFinish})` renders progress/cancel/retry/log; `buildLog`, `downloadJson`, `labelOf`.
   - `public/assets/js/modals.js` → `openModal({title, build, confirmLabel, confirmClass, danger})` (focus trap, Esc/backdrop close → null), `confirmDelete(repos)`, `confirmMakePublic(repos)`, `confirmTransfer(repos, newOwner)`, `confirmSimple({title, message, repos, confirmLabel, confirmClass})`, `promptText({title, label, validate, hint})` → string|null.
   - `public/assets/js/grid.js` → `loadAllRepos(onProgress)` (pages until `hasMore` false → `setRepos`), pure `applyFilters(repos, filters, login)`, `affiliationOf`, `isLikelyEmpty` (uses `repo.isEmpty` if set by cleanup scan, else size===0), `initGrid(panel)` (toolbar, selection bar with action buttons emitting `bulk-action`, table 50/page, shift-click, select-all-filtered, Reload). Listens to `repos`/`selection` events so later mutations re-render automatically.
   - `scripts/dev-server.js` → Node static+API server applying vercel.json headers; `GM_MOCK=1` loads `scripts/mock-github.js` (in-memory fake GitHub, 240 repos). `npm run dev:mock` (scripts/dev.sh) = zero-config local run. In mock mode `/api/auth/login` redirects straight to the callback (no GitHub hop), so opening `/api/auth/login` logs you in.
-  - `test/app.test.js` → smoke tests using `app.request()`; `test/grid.test.js` → filter/sort tests; `test/bulk.test.js` → runner sequencing/gap/cancel/rate-retry with a virtual clock (both stub `globalThis.document`).
-- Implemented endpoints: `GET /api/health`, `GET /api/auth/login`, `GET /api/auth/callback`, `POST /api/auth/logout`, `GET /api/me`, `GET /api/repos?page=N` → `{page, items, hasMore, rate}`.
+  - `test/app.test.js` → smoke tests using `app.request()`; `test/grid.test.js` → filter/sort tests; `test/bulk.test.js` → runner sequencing/gap/cancel/rate-retry with a virtual clock (both stub `globalThis.document`); `test/mutations.test.js` → PATCH/DELETE/topics routes + CSRF (helper `authed(path, {method, json})` adds CSRF+Origin).
+- Implemented endpoints: `GET /api/health`, `GET /api/auth/login`, `GET /api/auth/callback`, `POST /api/auth/logout`, `GET /api/me`, `GET /api/repos?page=N` → `{page, items, hasMore, rate}`, `PATCH /api/repos/:o/:r` (`{private?, archived?}` → `{repo, rate}`), `DELETE /api/repos/:o/:r` (204), `PUT /api/repos/:o/:r/topics` (`{mode, names}` → `{topics, rate}`).
 - Error JSON shape: `{error: <code>, message, status, retryAfter?, rate?}`; codes: unauthorized, rate_limited(429), forbidden, not_found, conflict, unprocessable, upstream_error, network_error, csrf, bad_origin, invalid_target.
 - Conventions: tests use `app.request(url, init, ENV)` with mocked `globalThis.fetch` (see test/repos.test.js helpers `authed`, `mockFetch`). Test script: `node --test "test/**/*.test.js"`.
   Built CSS `public/assets/styles.css` is gitignored (Vercel builds it via `npm run build`).
