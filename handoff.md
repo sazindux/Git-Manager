@@ -1,12 +1,12 @@
 # HANDOFF
-Updated: 2026-10-05T15:30Z · Last task touched: T0 · Branch: main
+Updated: 2026-10-05T16:00Z · Last task touched: T2 · Branch: main
 
 ## Task status
 | ID | Task | Status | Commit |
 |----|------|--------|--------|
-| T0 | Scaffold & config | done | (see git log: feat(T0)) |
-| T1 | Session crypto & OAuth flow | pending | |
-| T2 | GitHub client & repo list endpoint | pending | |
+| T0 | Scaffold & config | done | ae3de79 |
+| T1 | Session crypto & OAuth flow | done | 02675de |
+| T2 | GitHub client & repo list endpoint | done | f89dd18 |
 | T3 | Frontend shell & glass UI | pending | |
 | T4 | Repository dashboard | pending | |
 | T5 | Bulk engine & safety modals | pending | |
@@ -18,10 +18,9 @@ Updated: 2026-10-05T15:30Z · Last task touched: T0 · Branch: main
 | T11 | Docs & final QA | pending | |
 
 ## Current / next action
-Start T1: create `lib/session.js` (AES-256-GCM seal/unseal via `crypto.subtle`, base64url, cookie
-helpers with `__Host-gm_session` vs `gm_session` for http://localhost), `lib/oauth.js`
-(login/callback/logout/me handlers), wire into `lib/app.js` with CSRF/origin middleware for non-GET.
-Add `test/session.test.js` (round trip, tamper, expiry, wrong key).
+Start T3: replace `public/index.html` with landing + dashboard shell; create `public/assets/js/{main,api,state,toast,ui}.js`
+(ES modules, `<script type="module" src="/assets/js/main.js">`). Bootstrap via `GET /api/me` → landing (401) or dashboard.
+Top bar: avatar, login, rate-limit badge, logout (POST /api/auth/logout with X-GM-CSRF). Show `?error=` codes as toast.
 
 ## Key facts
 - Entry pattern: `api/[...route].js` → `import { handle } from 'hono/vercel'`, `export const config = { runtime: 'edge' }`,
@@ -29,19 +28,27 @@ Add `test/session.test.js` (round trip, tamper, expiry, wrong key).
   edge deploy on Vercel NOT yet verified (see Known issues).
 - Versions installed: hono 4.13.x, tailwindcss 3.4.x, Node 22 local (engines >=20).
 - Module map:
-  - `lib/app.js` → Hono app, no-store middleware, `/api/health`, JSON 404/500 handlers.
+  - `lib/app.js` → Hono app; middlewares: no-store, CSRF (non-GET needs `X-GM-CSRF: 1` + Origin === appOrigin); routes; `onError` maps `GitHubError` → JSON, clears cookie on 401.
+  - `lib/session.js` → `seal/unseal(payload, secretB64)`, `makeSessionPayload`, `randomBase64Url`, `timingSafeEqual`, cookie helpers (`set/clear/readSessionCookie`, `set/read/clearStateCookie`), `sessionCookieName(url)`.
+  - `lib/oauth.js` → `getEnv(c)` (c.env if has SESSION_SECRET else process.env), `appOrigin(c)`, handlers `login/callback/logout/me`, middleware `requireSession` (sets `c.var.session = {token, login, id}`).
+  - `lib/github.js` → `ghFetch(token, path, {method, body, okStatuses, headers})` → `{status, data, rate, headers}`; throws `GitHubError(status, code, message, {retryAfter, rate})`; `mapError`, `rateInfo`, `applyRateHeaders(c, rate)`.
+  - `lib/validate.js` → `isValidOwner/Repo/Branch`, `encodeBranch`, `normalizeTopic(s)`, `parsePositiveInt`, `MAX_TOPICS`.
+  - `lib/repos.js` → `trimRepo`, `validateTarget` middleware (sets `c.var.target = {owner, repo, path}`), `listRepos`.
   - `api/[...route].js` → thin Vercel edge entry.
   - `src/styles.css` → Tailwind + components: `.glass .glass-strong .btn .btn-primary .btn-ghost .btn-danger .btn-warn .input .badge .badge-ok .badge-warn .badge-danger .progress .progress-bar`.
   - `public/index.html` → placeholder page (replaced in T3).
   - `test/app.test.js` → smoke tests using `app.request()`.
-- Implemented endpoints: `GET /api/health`.
-- Conventions: tests use `app.request(url, init)` (no server needed). Test script: `node --test "test/**/*.test.js"`.
+- Implemented endpoints: `GET /api/health`, `GET /api/auth/login`, `GET /api/auth/callback`, `POST /api/auth/logout`, `GET /api/me`, `GET /api/repos?page=N` → `{page, items, hasMore, rate}`.
+- Error JSON shape: `{error: <code>, message, status, retryAfter?, rate?}`; codes: unauthorized, rate_limited(429), forbidden, not_found, conflict, unprocessable, upstream_error, network_error, csrf, bad_origin, invalid_target.
+- Conventions: tests use `app.request(url, init, ENV)` with mocked `globalThis.fetch` (see test/repos.test.js helpers `authed`, `mockFetch`). Test script: `node --test "test/**/*.test.js"`.
   Built CSS `public/assets/styles.css` is gitignored (Vercel builds it via `npm run build`).
 - Tailwind config uses `export default` (package is ESM); color palette `ink-950/900/800/700`.
 
 ## Decisions & deviations from the prompt
 - `public/assets/styles.css` is gitignored and produced at build time (keeps diffs clean).
 - Test script uses a glob instead of `node --test test/` (directory arg not supported by Node 22).
+- `hono/adapter` `env()` ignores `c.env` on Node/edge, so `getEnv` reads `c.env` first (tests) then `process.env` (Vercel).
+- Mutating-route CSRF check compares Origin with `appOrigin(c)` (APP_URL if set, else request origin).
 
 ## Known issues / unverified
 - Edge runtime + `hono/vercel` on real Vercel deploy not verified from sandbox (no Vercel access). If `/api/health`
