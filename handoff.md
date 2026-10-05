@@ -1,5 +1,5 @@
 # HANDOFF
-Updated: 2026-10-05T17:00Z · Last task touched: T6 · Branch: main
+Updated: 2026-10-05T17:00Z · Last task touched: T7 · Branch: main
 
 ## Task status
 | ID | Task | Status | Commit |
@@ -11,18 +11,19 @@ Updated: 2026-10-05T17:00Z · Last task touched: T6 · Branch: main
 | T4 | Repository dashboard | done | 4914a23 |
 | T5 | Bulk engine & safety modals | done | 42634a3 |
 | T6 | Bulk actions: visibility/archive/topics/delete | done | 606eb7d |
-| T7 | Bulk transfer | pending | |
+| T7 | Bulk transfer | done | 5881df0 |
 | T8 | Cleanup tools | pending | |
 | T9 | Analytics | pending | |
 | T10 | Security & quality review | pending | |
 | T11 | Docs & final QA | pending | |
 
 ## Current / next action
-Start T7: backend `transferRepo` in `lib/repos.js` (body `{new_owner, new_name?}` validated with `isValidOwner`/`isValidRepo`,
-`POST {path}/transfer`, accept 202 via `okStatuses`, return `{status: 202, repo: trimRepo(data)}`), register
-`app.post('/repos/:owner/:repo/transfer', requireSession, validateTarget, transferRepo)`, add tests to `test/mutations.test.js`.
-Frontend transfer flow already exists in `actions.js#runTransfer` (promptText → confirmTransfer → runner, 202 → badge
-"Transfer pending → owner" or removal when owner changed). Verify end-to-end with mock (`/transfer` returns 202), then handoff.
+Start T8: backend in `lib/repos.js`: `emptyCheck` (GET `{path}/commits?per_page=1` with `okStatuses:[409]` → `{empty: status===409}`),
+`listBranches` (paginate `{path}/branches?per_page=100`, for each non-default branch GET `compare/{default}...{branch}` (encode with
+`encodeBranch`) + `commits/{sha}` date; query `stale_days`; pure classifier `classifyBranch({name, protected, isDefault, aheadBy, lastCommitDate}, staleDays)`
+→ `{merged, stale, deletable}` in a new `lib/branches.js` with tests), `deleteBranch` (route `/repos/:owner/:repo/branches/*`, refuse default/protected
+by fetching branch first). Frontend `public/assets/js/cleanup.js` with tabs Forks / Empty repos / Branches mounted into `#tab-cleanup`
+(uses `readOptions()` for scans, `writeOptions()` + `confirmDelete` for deletes; branch deletes use a `confirmSimple` listing `owner/repo#branch`).
 
 ## Key facts
 - Entry pattern: `api/[...route].js` → `import { handle } from 'hono/vercel'`, `export const config = { runtime: 'edge' }`,
@@ -35,7 +36,7 @@ Frontend transfer flow already exists in `actions.js#runTransfer` (promptText �
   - `lib/oauth.js` → `getEnv(c)` (c.env if has SESSION_SECRET else process.env), `appOrigin(c)`, handlers `login/callback/logout/me`, middleware `requireSession` (sets `c.var.session = {token, login, id}`).
   - `lib/github.js` → `ghFetch(token, path, {method, body, okStatuses, headers})` → `{status, data, rate, headers}`; throws `GitHubError(status, code, message, {retryAfter, rate})`; `mapError`, `rateInfo`, `applyRateHeaders(c, rate)`.
   - `lib/validate.js` → `isValidOwner/Repo/Branch`, `encodeBranch`, `normalizeTopic(s)`, `parsePositiveInt`, `MAX_TOPICS`.
-  - `lib/repos.js` → `trimRepo`, `validateTarget` middleware (sets `c.var.target = {owner, repo, path}`), `listRepos`, `patchRepo`, `deleteRepo`, `mergeTopics` (pure), `putTopics`, helpers `readJsonBody(c)`, `bad(c, msg)` (400 `bad_request`).
+  - `lib/repos.js` → `trimRepo`, `validateTarget` middleware (sets `c.var.target = {owner, repo, path}`), `listRepos`, `patchRepo`, `deleteRepo`, `mergeTopics` (pure), `putTopics`, `transferRepo`, helpers `readJsonBody(c)`, `bad(c, msg)` (400 `bad_request`).
   - `api/[...route].js` → thin Vercel edge entry.
   - `src/styles.css` → Tailwind + components: `.glass .glass-strong .btn .btn-primary .btn-ghost .btn-danger .btn-warn .input .badge .badge-ok .badge-warn .badge-danger .progress .progress-bar`.
   - `public/index.html` → views `#view-loading/#view-landing/#view-dashboard`, header (avatar `#user-avatar`, `#user-login`, `#rate-badge`, `#btn-logout`), tab buttons `[data-tab]`, sections `#tab-repos` (`#repos-panel`), `#tab-cleanup`, `#tab-analytics`, `#toasts`, `#modal-root`. Script: `/assets/js/main.js` (module).
@@ -51,7 +52,7 @@ Frontend transfer flow already exists in `actions.js#runTransfer` (promptText �
   - `public/assets/js/grid.js` → `loadAllRepos(onProgress)` (pages until `hasMore` false → `setRepos`), pure `applyFilters(repos, filters, login)`, `affiliationOf`, `isLikelyEmpty` (uses `repo.isEmpty` if set by cleanup scan, else size===0), `initGrid(panel)` (toolbar, selection bar with action buttons emitting `bulk-action`, table 50/page, shift-click, select-all-filtered, Reload). Listens to `repos`/`selection` events so later mutations re-render automatically.
   - `scripts/dev-server.js` → Node static+API server applying vercel.json headers; `GM_MOCK=1` loads `scripts/mock-github.js` (in-memory fake GitHub, 240 repos). `npm run dev:mock` (scripts/dev.sh) = zero-config local run. In mock mode `/api/auth/login` redirects straight to the callback (no GitHub hop), so opening `/api/auth/login` logs you in.
   - `test/app.test.js` → smoke tests using `app.request()`; `test/grid.test.js` → filter/sort tests; `test/bulk.test.js` → runner sequencing/gap/cancel/rate-retry with a virtual clock (both stub `globalThis.document`); `test/mutations.test.js` → PATCH/DELETE/topics routes + CSRF (helper `authed(path, {method, json})` adds CSRF+Origin).
-- Implemented endpoints: `GET /api/health`, `GET /api/auth/login`, `GET /api/auth/callback`, `POST /api/auth/logout`, `GET /api/me`, `GET /api/repos?page=N` → `{page, items, hasMore, rate}`, `PATCH /api/repos/:o/:r` (`{private?, archived?}` → `{repo, rate}`), `DELETE /api/repos/:o/:r` (204), `PUT /api/repos/:o/:r/topics` (`{mode, names}` → `{topics, rate}`).
+- Implemented endpoints: `GET /api/health`, `GET /api/auth/login`, `GET /api/auth/callback`, `POST /api/auth/logout`, `GET /api/me`, `GET /api/repos?page=N` → `{page, items, hasMore, rate}`, `PATCH /api/repos/:o/:r` (`{private?, archived?}` → `{repo, rate}`), `DELETE /api/repos/:o/:r` (204), `PUT /api/repos/:o/:r/topics` (`{mode, names}` → `{topics, rate}`), `POST /api/repos/:o/:r/transfer` (`{new_owner, new_name?}` → 202 `{pending, repo, rate}`).
 - Error JSON shape: `{error: <code>, message, status, retryAfter?, rate?}`; codes: unauthorized, rate_limited(429), forbidden, not_found, conflict, unprocessable, upstream_error, network_error, csrf, bad_origin, invalid_target.
 - Conventions: tests use `app.request(url, init, ENV)` with mocked `globalThis.fetch` (see test/repos.test.js helpers `authed`, `mockFetch`). Test script: `node --test "test/**/*.test.js"`.
   Built CSS `public/assets/styles.css` is gitignored (Vercel builds it via `npm run build`).
