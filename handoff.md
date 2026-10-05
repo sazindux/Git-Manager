@@ -1,5 +1,5 @@
-# HANDOFF
-Updated: 2026-10-05T19:10Z · Last task touched: T10 · Branch: main
+# HANDOFF — PROJECT COMPLETE
+Updated: 2026-10-05T19:25Z · Last task touched: T11 · Branch: main
 
 ## Task status
 | ID | Task | Status | Commit |
@@ -15,12 +15,12 @@ Updated: 2026-10-05T19:10Z · Last task touched: T10 · Branch: main
 | T8 | Cleanup tools | done | 0640fd8 |
 | T9 | Analytics | done | 994c346 |
 | T10 | Security & quality review | done | 89d3230 |
-| T11 | Docs & final QA | pending | |
+| T11 | Docs & final QA | done | 8143228 |
 
 ## Current / next action
-Start T11: write `README.md` (what it does, privacy model, OAuth App registration incl. separate dev app for
-`http://localhost:3000`, env vars, Vercel import, `vercel dev`, org third-party access note, scope explanation,
-manual QA checklist). Then set T11 done and write "PROJECT COMPLETE" at the top of this file.
+All tasks T0–T11 are done. Remaining work is user-side only (see "User actions required"). If a live-deploy
+bug is reported, add it under "Known issues", fix it, and update the affected task row.
+Final QA: `npm run build` OK, `npm test` 64/64 pass, UI CSP-clean in mock mode (Playwright, 0 console errors).
 
 ## Security checklist (T10, verified 2026-10-05)
 - [x] No `console.*` in lib/ api/ public/ (only scripts/dev.sh generates a dev secret locally).
@@ -87,6 +87,7 @@ manual QA checklist). Then set T11 done and write "PROJECT COMPLETE" at the top 
   fails after deploy, fall back: remove `config` export and use the Node pattern (`export const GET = handle(app)` etc.).
 
 ## User actions required
+- [ ] Run README "Manual QA checklist" against the live deployment with a throwaway repo.
 - [ ] Import repo into Vercel (framework: Other; build = `npm run build`, output = `public`) and deploy; check `/api/health`.
 - [ ] Create GitHub OAuth App: homepage `https://<domain>`, callback `https://<domain>/api/auth/callback`.
 - [ ] Set `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET` (base64 of 32 random bytes), optional `APP_URL` in Vercel; redeploy.
