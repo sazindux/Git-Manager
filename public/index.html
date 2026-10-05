@@ -4,15 +4,78 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GitHub Manager</title>
+  <meta name="description" content="Stateless bulk GitHub repository manager">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/assets/styles.css">
 </head>
 <body>
-  <main class="mx-auto flex min-h-screen max-w-3xl items-center justify-center p-6">
-    <section class="glass w-full p-8 text-center">
-      <h1 class="text-3xl font-semibold tracking-tight">GitHub Manager</h1>
-      <p class="mt-3 text-slate-300">Stateless bulk repository management. Setup in progress.</p>
-      <p class="mt-6"><span class="badge-ok">API: /api/health</span></p>
-    </section>
-  </main>
+  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 btn-primary">Skip to content</a>
+
+  <!-- Landing / login -->
+  <section id="view-landing" hidden class="mx-auto flex min-h-screen max-w-3xl items-center justify-center p-6">
+    <div class="glass w-full p-8 md:p-12 text-center">
+      <div class="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10">
+        <svg aria-hidden="true" viewBox="0 0 16 16" class="h-8 w-8 fill-current"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+      </div>
+      <h1 class="text-3xl md:text-4xl font-semibold tracking-tight">GitHub Manager</h1>
+      <p class="mx-auto mt-3 max-w-xl text-slate-300">Bulk delete, archive, transfer, change visibility and clean up your repositories. Stateless, serverless, nothing stored.</p>
+      <div class="mt-8">
+        <a id="btn-login" href="/api/auth/login" class="btn-primary px-6 py-3 text-base">Sign in with GitHub</a>
+      </div>
+      <p class="mt-6 text-xs text-slate-400">Requests scopes <code class="font-mono">repo</code>, <code class="font-mono">delete_repo</code>, <code class="font-mono">read:org</code>. Your token lives only in an encrypted HttpOnly cookie for up to 8 hours.</p>
+    </div>
+  </section>
+
+  <!-- Dashboard -->
+  <div id="view-dashboard" hidden class="min-h-screen">
+    <header class="sticky top-0 z-30 border-b border-white/10 bg-ink-950/70 backdrop-blur-xl">
+      <div class="mx-auto flex max-w-screen-2xl items-center gap-3 px-4 py-3">
+        <span class="text-lg font-semibold tracking-tight">GitHub Manager</span>
+        <nav aria-label="Sections" class="ml-4 hidden gap-1 md:flex" id="nav-tabs">
+          <button type="button" class="btn-ghost py-1.5" data-tab="repos" aria-pressed="true">Repositories</button>
+          <button type="button" class="btn-ghost py-1.5" data-tab="cleanup" aria-pressed="false">Cleanup</button>
+          <button type="button" class="btn-ghost py-1.5" data-tab="analytics" aria-pressed="false">Analytics</button>
+        </nav>
+        <div class="ml-auto flex items-center gap-3">
+          <span id="rate-badge" class="badge" title="GitHub API requests remaining">API: —</span>
+          <img id="user-avatar" alt="" class="h-8 w-8 rounded-full border border-white/10" width="32" height="32">
+          <span id="user-login" class="hidden text-sm text-slate-200 sm:inline"></span>
+          <button id="btn-logout" type="button" class="btn-ghost py-1.5">Sign out</button>
+        </div>
+      </div>
+      <nav aria-label="Sections (mobile)" class="flex gap-1 px-4 pb-3 md:hidden" id="nav-tabs-mobile">
+        <button type="button" class="btn-ghost flex-1 py-1.5" data-tab="repos" aria-pressed="true">Repos</button>
+        <button type="button" class="btn-ghost flex-1 py-1.5" data-tab="cleanup" aria-pressed="false">Cleanup</button>
+        <button type="button" class="btn-ghost flex-1 py-1.5" data-tab="analytics" aria-pressed="false">Analytics</button>
+      </nav>
+    </header>
+
+    <main id="main" class="mx-auto max-w-screen-2xl px-4 py-6" tabindex="-1">
+      <section id="tab-repos" class="space-y-4">
+        <div id="repos-panel" class="glass p-5">
+          <p class="text-slate-300">Repository dashboard loads here.</p>
+        </div>
+      </section>
+      <section id="tab-cleanup" hidden class="space-y-4">
+        <div class="glass p-5"><p class="text-slate-300">Cleanup tools load here.</p></div>
+      </section>
+      <section id="tab-analytics" hidden class="space-y-4">
+        <div class="glass p-5"><p class="text-slate-300">Analytics load here.</p></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Loading splash -->
+  <div id="view-loading" class="flex min-h-screen items-center justify-center">
+    <div class="glass flex items-center gap-3 px-6 py-4"><span class="h-3 w-3 animate-pulse rounded-full bg-sky-400"></span><span class="text-slate-300">Loading…</span></div>
+  </div>
+
+  <!-- Toasts -->
+  <div id="toasts" class="pointer-events-none fixed bottom-4 right-4 z-50 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2" aria-live="polite" aria-atomic="false"></div>
+
+  <!-- Modal root -->
+  <div id="modal-root"></div>
+
+  <script type="module" src="/assets/js/main.js"></script>
 </body>
 </html>

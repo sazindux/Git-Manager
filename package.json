@@ -10,7 +10,8 @@
   "scripts": {
     "build": "tailwindcss -c tailwind.config.js -i src/styles.css -o public/assets/styles.css --minify",
     "test": "node --test \"test/**/*.test.js\"",
-    "dev": "vercel dev"
+    "dev": "vercel dev",
+    "dev:local": "node scripts/dev-server.js"
   },
   "dependencies": {
     "hono": "^4.6.0"
