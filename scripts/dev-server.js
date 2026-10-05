@@ -5,6 +5,8 @@ import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { app } from '../lib/app.js';
 
+if (process.env.GM_MOCK === '1') (await import('./mock-github.js')).installMock();
+
 const PORT = Number(process.env.PORT || 3000);
 const PUBLIC = new URL('../public/', import.meta.url).pathname;
 const vercel = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
