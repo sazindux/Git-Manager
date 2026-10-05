@@ -27,21 +27,39 @@ export function initCleanup(section) {
     { id: 'empty', label: 'Empty repos', mount: mountEmpty },
     { id: 'branches', label: 'Branches', mount: mountBranches },
   ];
-  const body = el('div', { class: 'glass p-5' });
+  const body = el('div', { class: 'glass p-5', id: 'cleanup-panel', role: 'tabpanel', tabindex: '0' });
   const nav = el('div', { class: 'flex flex-wrap gap-2', role: 'tablist', 'aria-label': 'Cleanup tools' });
   let active = null;
-  const activate = (t) => {
+  const activate = (t, focus = false) => {
     active = t.id;
-    for (const b of nav.children) b.setAttribute('aria-selected', String(b.dataset.tab === t.id));
+    for (const b of nav.children) {
+      const selected = b.dataset.tab === t.id;
+      b.setAttribute('aria-selected', String(selected));
+      b.setAttribute('tabindex', selected ? '0' : '-1');
+      if (selected) { body.setAttribute('aria-labelledby', b.id); if (focus) b.focus(); }
+    }
     clear(body);
     t.mount(body);
   };
   for (const t of tabs) {
     nav.append(el('button', {
-      type: 'button', role: 'tab', class: 'btn-ghost py-1.5 aria-selected:bg-sky-500/20 aria-selected:border-sky-400/40',
+      type: 'button', role: 'tab', id: `cleanup-tab-${t.id}`, 'aria-controls': 'cleanup-panel',
+      class: 'btn-ghost py-1.5 aria-selected:bg-sky-500/20 aria-selected:border-sky-400/40',
       dataset: { tab: t.id }, 'aria-selected': 'false', onClick: () => activate(t),
     }, t.label));
   }
+  // Roving tabindex: arrow keys / Home / End move between tabs (WAI-ARIA tabs pattern).
+  nav.addEventListener('keydown', (ev) => {
+    const idx = tabs.findIndex((x) => x.id === active);
+    let next = -1;
+    if (ev.key === 'ArrowRight') next = (idx + 1) % tabs.length;
+    else if (ev.key === 'ArrowLeft') next = (idx - 1 + tabs.length) % tabs.length;
+    else if (ev.key === 'Home') next = 0;
+    else if (ev.key === 'End') next = tabs.length - 1;
+    if (next < 0) return;
+    ev.preventDefault();
+    activate(tabs[next], true);
+  });
   section.append(nav, progressHost, body);
   activate(tabs[0]);
   // Re-render the active tab when the repo list changes (deletes, reload) so lists stay accurate.
