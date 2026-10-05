@@ -62,6 +62,12 @@ export function installMock() {
       if (!repo) return json({ message: 'Not Found' }, 404);
       const rest = mt[3] || '';
       const body = init.body ? JSON.parse(init.body) : {};
+      if (rest === '' && m === 'GET') return json(repo);
+      const one = rest.match(/^\/branches\/(.+)$/);
+      if (one && m === 'GET') {
+        const b = branches.get(repo.id).find((x) => x.name === decodeURIComponent(one[1]));
+        return b ? json({ name: b.name, protected: b.protected }) : json({ message: 'Branch not found' }, 404);
+      }
       if (rest === '' && m === 'PATCH') {
         if (repo.fork && 'private' in body) return json({ message: 'Visibility of forks cannot be changed' }, 422);
         if (!repo.permissions.admin) return json({ message: 'Must have admin rights to Repository.' }, 403);

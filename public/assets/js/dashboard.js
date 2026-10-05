@@ -3,6 +3,7 @@ import { $ } from './ui.js';
 import { initGrid } from './grid.js';
 import { BulkPanel } from './bulk.js';
 import { initActions } from './actions.js';
+import { initCleanup } from './cleanup.js';
 
 export const bulkPanel = { instance: null };
 
@@ -12,4 +13,6 @@ export async function initDashboard() {
   const panel = $('#repos-panel');
   if (panel) initGrid(panel);
   if (bulkPanel.instance) initActions(bulkPanel.instance);
+  const cleanup = $('#tab-cleanup');
+  if (cleanup) initCleanup(cleanup);
 }
