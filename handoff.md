@@ -1,5 +1,5 @@
 # HANDOFF
-Updated: 2026-10-05T17:00Z · Last task touched: T4 · Branch: main
+Updated: 2026-10-05T17:00Z · Last task touched: T5 · Branch: main
 
 ## Task status
 | ID | Task | Status | Commit |
@@ -9,7 +9,7 @@ Updated: 2026-10-05T17:00Z · Last task touched: T4 · Branch: main
 | T2 | GitHub client & repo list endpoint | done | f89dd18 |
 | T3 | Frontend shell & glass UI | done | 80d4af5 |
 | T4 | Repository dashboard | done | 4914a23 |
-| T5 | Bulk engine & safety modals | pending | |
+| T5 | Bulk engine & safety modals | done | 42634a3 |
 | T6 | Bulk actions: visibility/archive/topics/delete | pending | |
 | T7 | Bulk transfer | pending | |
 | T8 | Cleanup tools | pending | |
@@ -18,12 +18,12 @@ Updated: 2026-10-05T17:00Z · Last task touched: T4 · Branch: main
 | T11 | Docs & final QA | pending | |
 
 ## Current / next action
-Start T5: create `public/assets/js/bulk.js` (generic runner `{items, perItemFn, concurrency, minGapMs, signal}`;
-writes = concurrency 1 + ≥1000 ms gap; progress panel with done/total, per-item status, Cancel (AbortController),
-auto wait+retry on `rate_limited` (use `ApiError.retryAfter`), Retry failed, Download log JSON) and
-`public/assets/js/modals.js` (delete / make-public / transfer / simple confirm; focus trap, Esc closes).
-Keep runner core pure (no DOM) so `test/bulk.test.js` can test sequencing/gap/cancel/retry with a mocked fn.
-Grid already emits `emit('bulk-action', {type})` for types: private, public, archive, unarchive, topics, transfer, delete.
+Start T6: in `lib/repos.js` add handlers `patchRepo` (body only `private`/`archived` booleans, reject other keys → 400),
+`deleteRepo` (204), `putTopics` (`{mode, names}`; GET existing → merge → normalize via `normalizeTopics` → ≤20 → PUT);
+register in `lib/app.js` under `requireSession` + `validateTarget`; add tests in `test/repos.test.js` (reuse `authed`/`mockFetch`).
+Frontend: create `public/assets/js/actions.js` listening to `on('bulk-action', {type})` → `selectedRepos()` → modal
+(`confirmDelete/confirmMakePublic/confirmSimple/promptText` from modals.js) → `bulkPanel.instance.run({... options: writeOptions()})`
+with `onItemOk` calling `updateRepo`/`removeRepos`. Disable `[data-action=delete]` button when `!hasScope('delete_repo')` (title explains).
 
 ## Key facts
 - Entry pattern: `api/[...route].js` → `import { handle } from 'hono/vercel'`, `export const config = { runtime: 'edge' }`,
@@ -45,10 +45,12 @@ Grid already emits `emit('bulk-action', {type})` for types: private, public, arc
   - `public/assets/js/api.js` → `api/get/post/patch/put/del`, `ApiError` (status, code, retryAfter, isRateLimit), `describeError(err)`; emits `unauthorized` on 401; reads X-RateLimit headers.
   - `public/assets/js/toast.js` → `toast(msg, kind)`, `success/error/info`.
   - `public/assets/js/main.js` → bootstrap (`/api/me`), views, tabs, logout, `?error=` toasts; dynamically imports `dashboard.js`.
-  - `public/assets/js/dashboard.js` → `initDashboard()` mounts `initGrid(#repos-panel)`.
+  - `public/assets/js/dashboard.js` → `initDashboard()`: creates `bulkPanel.instance = new BulkPanel($('#bulk-panel'))` (exported), mounts `initGrid(#repos-panel)`.
+  - `public/assets/js/bulk.js` → pure `runBulk(items, fn, {concurrency, minGapMs, signal, onProgress, now, sleep})` → `{results:[{item,key,status,value,error,errorCode,attempts}], cancelled}`; `writeOptions()` (1 worker, 1000 ms gap), `readOptions()` (4 workers); `BulkPanel.run({title, action, items, perItemFn, options, onItemOk, onFinish})` renders progress/cancel/retry/log; `buildLog`, `downloadJson`, `labelOf`.
+  - `public/assets/js/modals.js` → `openModal({title, build, confirmLabel, confirmClass, danger})` (focus trap, Esc/backdrop close → null), `confirmDelete(repos)`, `confirmMakePublic(repos)`, `confirmTransfer(repos, newOwner)`, `confirmSimple({title, message, repos, confirmLabel, confirmClass})`, `promptText({title, label, validate, hint})` → string|null.
   - `public/assets/js/grid.js` → `loadAllRepos(onProgress)` (pages until `hasMore` false → `setRepos`), pure `applyFilters(repos, filters, login)`, `affiliationOf`, `isLikelyEmpty` (uses `repo.isEmpty` if set by cleanup scan, else size===0), `initGrid(panel)` (toolbar, selection bar with action buttons emitting `bulk-action`, table 50/page, shift-click, select-all-filtered, Reload). Listens to `repos`/`selection` events so later mutations re-render automatically.
   - `scripts/dev-server.js` → Node static+API server applying vercel.json headers; `GM_MOCK=1` loads `scripts/mock-github.js` (in-memory fake GitHub, 240 repos). `npm run dev:mock` (scripts/dev.sh) = zero-config local run. In mock mode `/api/auth/login` redirects straight to the callback (no GitHub hop), so opening `/api/auth/login` logs you in.
-  - `test/app.test.js` → smoke tests using `app.request()`; `test/grid.test.js` → filter/sort tests (stubs `globalThis.document`).
+  - `test/app.test.js` → smoke tests using `app.request()`; `test/grid.test.js` → filter/sort tests; `test/bulk.test.js` → runner sequencing/gap/cancel/rate-retry with a virtual clock (both stub `globalThis.document`).
 - Implemented endpoints: `GET /api/health`, `GET /api/auth/login`, `GET /api/auth/callback`, `POST /api/auth/logout`, `GET /api/me`, `GET /api/repos?page=N` → `{page, items, hasMore, rate}`.
 - Error JSON shape: `{error: <code>, message, status, retryAfter?, rate?}`; codes: unauthorized, rate_limited(429), forbidden, not_found, conflict, unprocessable, upstream_error, network_error, csrf, bad_origin, invalid_target.
 - Conventions: tests use `app.request(url, init, ENV)` with mocked `globalThis.fetch` (see test/repos.test.js helpers `authed`, `mockFetch`). Test script: `node --test "test/**/*.test.js"`.
