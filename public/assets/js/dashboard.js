@@ -4,6 +4,7 @@ import { initGrid } from './grid.js';
 import { BulkPanel } from './bulk.js';
 import { initActions } from './actions.js';
 import { initCleanup } from './cleanup.js';
+import { initAnalytics } from './analytics.js';
 
 export const bulkPanel = { instance: null };
 
@@ -15,4 +16,6 @@ export async function initDashboard() {
   if (bulkPanel.instance) initActions(bulkPanel.instance);
   const cleanup = $('#tab-cleanup');
   if (cleanup) initCleanup(cleanup);
+  const analytics = $('#tab-analytics');
+  if (analytics) initAnalytics(analytics);
 }
