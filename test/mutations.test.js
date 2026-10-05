@@ -105,3 +105,32 @@ test('PUT topics merges with existing (add), replaces, validates', async (t) => 
   assert.equal(res.status, 400);
   assert.equal(calls.length, 3);
 });
+
+test('POST transfer validates body and returns 202 with pending flag', async (t) => {
+  const calls = mockFetch(t, async (url, init) => json({ id: 1, name: 'r', full_name: 'octo/r', owner: { login: 'octo', type: 'User' } }, 202));
+  let res = await authed('/api/repos/a/r/transfer', { method: 'POST', json: { new_owner: 'octo' } });
+  assert.equal(res.status, 202);
+  const body = await res.json();
+  assert.equal(body.pending, true);
+  assert.equal(body.repo.owner.login, 'octo');
+  assert.equal(new URL(calls[0].url).pathname, '/repos/a/r/transfer');
+  assert.deepEqual(JSON.parse(calls[0].init.body), { new_owner: 'octo' });
+  res = await authed('/api/repos/a/r/transfer', { method: 'POST', json: { new_owner: '-bad' } });
+  assert.equal(res.status, 400);
+  res = await authed('/api/repos/a/r/transfer', { method: 'POST', json: { new_owner: 'a' } });
+  assert.equal(res.status, 400);
+  res = await authed('/api/repos/a/r/transfer', { method: 'POST', json: { new_owner: 'octo', team_ids: [1] } });
+  assert.equal(res.status, 400);
+  res = await authed('/api/repos/a/r/transfer', { method: 'POST', json: { new_owner: 'octo', new_name: '..' } });
+  assert.equal(res.status, 400);
+  assert.equal(calls.length, 1);
+});
+
+test('POST transfer 422 maps to unprocessable with GitHub message', async (t) => {
+  mockFetch(t, async () => json({ message: 'Repositories cannot be transferred to the original owner' }, 422));
+  const res = await authed('/api/repos/a/r/transfer', { method: 'POST', json: { new_owner: 'octo' } });
+  assert.equal(res.status, 422);
+  const body = await res.json();
+  assert.equal(body.error, 'unprocessable');
+  assert.match(body.message, /original owner/);
+});

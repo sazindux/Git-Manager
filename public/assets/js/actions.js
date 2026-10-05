@@ -166,6 +166,12 @@ async function runTransfer(bulkPanel, repos) {
       if (res?.repo?.owner?.login && res.repo.owner.login.toLowerCase() !== r.owner.login.toLowerCase()) removeRepos([r.id]);
       else updateRepo(r.id, { transferPending: newOwner });
     },
-    onFinish: (out) => afterRun('Transfer', out),
+    onFinish: ({ results, cancelled }) => {
+      const started = results.filter((r) => r.status === 'ok').length;
+      const failed = results.filter((r) => r.status === 'failed').length;
+      if (started) success(`Transfer started for ${formatNumber(started)} ${plural(started)}${failed ? `, ${failed} failed` : ''}${cancelled ? ' (cancelled)' : ''}. Personal-account targets stay listed as pending until the recipient accepts.`);
+      else if (failed) info(`Transfer: all ${failed} failed – see the progress panel for reasons`);
+      clearSelection();
+    },
   });
 }
