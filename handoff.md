@@ -1,5 +1,5 @@
 # HANDOFF
-Updated: 2026-10-05T16:00Z · Last task touched: T3 · Branch: main
+Updated: 2026-10-05T17:00Z · Last task touched: T4 · Branch: main
 
 ## Task status
 | ID | Task | Status | Commit |
@@ -8,7 +8,7 @@ Updated: 2026-10-05T16:00Z · Last task touched: T3 · Branch: main
 | T1 | Session crypto & OAuth flow | done | 02675de |
 | T2 | GitHub client & repo list endpoint | done | f89dd18 |
 | T3 | Frontend shell & glass UI | done | 80d4af5 |
-| T4 | Repository dashboard | pending | |
+| T4 | Repository dashboard | done | 4914a23 |
 | T5 | Bulk engine & safety modals | pending | |
 | T6 | Bulk actions: visibility/archive/topics/delete | pending | |
 | T7 | Bulk transfer | pending | |
@@ -18,9 +18,12 @@ Updated: 2026-10-05T16:00Z · Last task touched: T3 · Branch: main
 | T11 | Docs & final QA | pending | |
 
 ## Current / next action
-Start T4: create `public/assets/js/grid.js` (load all pages via `GET /api/repos?page=N` with progress → `setRepos`;
-search/filters/sort; 50/page client pagination; checkbox selection with shift-click + select-all-filtered; sticky selection
-bar). Mount it from `dashboard.js#initDashboard()` into `#repos-panel`. Verify in browser via `npm run dev:mock`.
+Start T5: create `public/assets/js/bulk.js` (generic runner `{items, perItemFn, concurrency, minGapMs, signal}`;
+writes = concurrency 1 + ≥1000 ms gap; progress panel with done/total, per-item status, Cancel (AbortController),
+auto wait+retry on `rate_limited` (use `ApiError.retryAfter`), Retry failed, Download log JSON) and
+`public/assets/js/modals.js` (delete / make-public / transfer / simple confirm; focus trap, Esc closes).
+Keep runner core pure (no DOM) so `test/bulk.test.js` can test sequencing/gap/cancel/retry with a mocked fn.
+Grid already emits `emit('bulk-action', {type})` for types: private, public, archive, unarchive, topics, transfer, delete.
 
 ## Key facts
 - Entry pattern: `api/[...route].js` → `import { handle } from 'hono/vercel'`, `export const config = { runtime: 'edge' }`,
@@ -42,9 +45,10 @@ bar). Mount it from `dashboard.js#initDashboard()` into `#repos-panel`. Verify i
   - `public/assets/js/api.js` → `api/get/post/patch/put/del`, `ApiError` (status, code, retryAfter, isRateLimit), `describeError(err)`; emits `unauthorized` on 401; reads X-RateLimit headers.
   - `public/assets/js/toast.js` → `toast(msg, kind)`, `success/error/info`.
   - `public/assets/js/main.js` → bootstrap (`/api/me`), views, tabs, logout, `?error=` toasts; dynamically imports `dashboard.js`.
-  - `public/assets/js/dashboard.js` → `initDashboard()` mounts feature modules (placeholder until T4).
-  - `scripts/dev-server.js` → Node static+API server applying vercel.json headers; `GM_MOCK=1` loads `scripts/mock-github.js` (in-memory fake GitHub, 240 repos). `npm run dev:mock` (scripts/dev.sh) = zero-config local run. Login flow works with mock (any code).
-  - `test/app.test.js` → smoke tests using `app.request()`.
+  - `public/assets/js/dashboard.js` → `initDashboard()` mounts `initGrid(#repos-panel)`.
+  - `public/assets/js/grid.js` → `loadAllRepos(onProgress)` (pages until `hasMore` false → `setRepos`), pure `applyFilters(repos, filters, login)`, `affiliationOf`, `isLikelyEmpty` (uses `repo.isEmpty` if set by cleanup scan, else size===0), `initGrid(panel)` (toolbar, selection bar with action buttons emitting `bulk-action`, table 50/page, shift-click, select-all-filtered, Reload). Listens to `repos`/`selection` events so later mutations re-render automatically.
+  - `scripts/dev-server.js` → Node static+API server applying vercel.json headers; `GM_MOCK=1` loads `scripts/mock-github.js` (in-memory fake GitHub, 240 repos). `npm run dev:mock` (scripts/dev.sh) = zero-config local run. In mock mode `/api/auth/login` redirects straight to the callback (no GitHub hop), so opening `/api/auth/login` logs you in.
+  - `test/app.test.js` → smoke tests using `app.request()`; `test/grid.test.js` → filter/sort tests (stubs `globalThis.document`).
 - Implemented endpoints: `GET /api/health`, `GET /api/auth/login`, `GET /api/auth/callback`, `POST /api/auth/logout`, `GET /api/me`, `GET /api/repos?page=N` → `{page, items, hasMore, rate}`.
 - Error JSON shape: `{error: <code>, message, status, retryAfter?, rate?}`; codes: unauthorized, rate_limited(429), forbidden, not_found, conflict, unprocessable, upstream_error, network_error, csrf, bad_origin, invalid_target.
 - Conventions: tests use `app.request(url, init, ENV)` with mocked `globalThis.fetch` (see test/repos.test.js helpers `authed`, `mockFetch`). Test script: `node --test "test/**/*.test.js"`.
@@ -73,4 +77,5 @@ npm install
 npm run build   # → public/assets/styles.css
 npm test
 npm run dev     # vercel dev (needs Vercel CLI + .env)
+PORT=3077 npm run dev:mock   # fake GitHub, open /api/auth/login to sign in
 ```
