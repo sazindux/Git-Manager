@@ -1,7 +1,8 @@
-// Dashboard orchestrator: loads repos and mounts feature modules (filled in T4+).
+// Dashboard orchestrator: mounts feature modules into the dashboard shell.
 import { $ } from './ui.js';
+import { initGrid } from './grid.js';
 
 export async function initDashboard() {
   const panel = $('#repos-panel');
-  if (panel) panel.firstElementChild.textContent = 'Signed in. Repository dashboard arrives in the next step.';
+  if (panel) initGrid(panel);
 }

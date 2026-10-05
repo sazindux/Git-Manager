@@ -22,6 +22,11 @@ http.createServer(async (req, res) => {
     const body = chunks.length && !['GET', 'HEAD'].includes(req.method) ? Buffer.concat(chunks) : undefined;
     const out = await app.fetch(new Request(url, { method: req.method, headers: req.headers, body }));
     res.statusCode = out.status;
+    // Mock mode: short-circuit the GitHub authorize hop so the browser lands on the callback directly.
+    if (process.env.GM_MOCK === '1' && url.pathname === '/api/auth/login' && out.status === 302) {
+      const loc = new URL(out.headers.get('location'));
+      out.headers.set('location', `/api/auth/callback?code=mock&state=${encodeURIComponent(loc.searchParams.get('state') || '')}`);
+    }
     out.headers.forEach((v, k) => { if (k !== 'set-cookie') res.setHeader(k, v); });
     const sc = out.headers.getSetCookie?.() || [];
     if (sc.length) res.setHeader('set-cookie', sc);
