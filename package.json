@@ -1,0 +1,21 @@
+{
+  "name": "serverless-github-manager",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Stateless serverless GitHub bulk repository manager (Vercel + Hono)",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tailwindcss -c tailwind.config.js -i src/styles.css -o public/assets/styles.css --minify",
+    "test": "node --test \"test/**/*.test.js\"",
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}

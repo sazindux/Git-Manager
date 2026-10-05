@@ -1,0 +1,8 @@
+node_modules/
+.vercel/
+.env
+.env.*
+!.env.example
+public/assets/styles.css
+*.log
+.DS_Store

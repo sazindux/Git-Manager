@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { color-scheme: dark; }
+  body {
+    @apply min-h-screen bg-ink-950 text-slate-100 font-sans antialiased;
+    background-image:
+      radial-gradient(60rem 40rem at 10% -10%, rgba(99, 102, 241, 0.25), transparent 60%),
+      radial-gradient(50rem 35rem at 110% 10%, rgba(14, 165, 233, 0.18), transparent 60%),
+      radial-gradient(40rem 30rem at 50% 120%, rgba(168, 85, 247, 0.15), transparent 60%);
+    background-attachment: fixed;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-sky-400 ring-offset-2 ring-offset-ink-950;
+  }
+  [hidden] { display: none !important; }
+}
+
+@layer components {
+  .glass {
+    @apply rounded-2xl border border-white/10 bg-white/5 shadow-xl shadow-black/30;
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+  }
+  .glass-strong {
+    @apply rounded-2xl border border-white/15 bg-ink-800/80 shadow-2xl shadow-black/50;
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium
+      transition-colors disabled:cursor-not-allowed disabled:opacity-50 select-none;
+  }
+  .btn-primary { @apply btn bg-sky-500 text-white hover:bg-sky-400; }
+  .btn-ghost { @apply btn border border-white/10 bg-white/5 text-slate-100 hover:bg-white/10; }
+  .btn-danger { @apply btn bg-rose-600 text-white hover:bg-rose-500; }
+  .btn-warn { @apply btn bg-amber-500 text-ink-950 hover:bg-amber-400; }
+  .input {
+    @apply w-full rounded-lg border border-white/10 bg-ink-900/70 px-3 py-2 text-sm text-slate-100
+      placeholder:text-slate-500 focus:border-sky-400;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5
+      px-2 py-0.5 text-xs font-medium text-slate-200;
+  }
+  .badge-ok { @apply badge border-emerald-400/30 bg-emerald-500/15 text-emerald-200; }
+  .badge-warn { @apply badge border-amber-400/30 bg-amber-500/15 text-amber-200; }
+  .badge-danger { @apply badge border-rose-400/30 bg-rose-500/15 text-rose-200; }
+  .progress { @apply h-2 w-full overflow-hidden rounded-full bg-white/10; }
+  .progress-bar { @apply h-full rounded-full bg-sky-400 transition-[width] duration-200; }
+}
