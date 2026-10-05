@@ -1,5 +1,5 @@
 # HANDOFF
-Updated: 2026-10-05T18:30Z · Last task touched: T9 · Branch: main
+Updated: 2026-10-05T19:10Z · Last task touched: T10 · Branch: main
 
 ## Task status
 | ID | Task | Status | Commit |
@@ -14,14 +14,27 @@ Updated: 2026-10-05T18:30Z · Last task touched: T9 · Branch: main
 | T7 | Bulk transfer | done | 5881df0 |
 | T8 | Cleanup tools | done | 0640fd8 |
 | T9 | Analytics | done | 994c346 |
-| T10 | Security & quality review | pending | |
+| T10 | Security & quality review | done | 89d3230 |
 | T11 | Docs & final QA | pending | |
 
 ## Current / next action
-Start T10 (security & quality review): grep `public/ lib/ api/` for `console.log`, `innerHTML`, `localStorage`, `sessionStorage`,
-`indexedDB`, `on[a-z]+=` in HTML, `style=`; confirm vercel.json headers match spec §7; confirm `package.json` has only hono + tailwindcss;
-check each mutating route has CSRF middleware (global in app.js) + validation; a11y pass (labels, focus trap in modals, Esc closes,
-cleanup `role=tab` buttons need `aria-controls`/keyboard arrows if cheap). Fix findings, then write "Security checklist" section here.
+Start T11: write `README.md` (what it does, privacy model, OAuth App registration incl. separate dev app for
+`http://localhost:3000`, env vars, Vercel import, `vercel dev`, org third-party access note, scope explanation,
+manual QA checklist). Then set T11 done and write "PROJECT COMPLETE" at the top of this file.
+
+## Security checklist (T10, verified 2026-10-05)
+- [x] No `console.*` in lib/ api/ public/ (only scripts/dev.sh generates a dev secret locally).
+- [x] No `innerHTML`/`outerHTML`/`insertAdjacentHTML`/`eval`; all DOM via `el()` + textContent/setAttribute.
+- [x] No `localStorage`/`sessionStorage`/`indexedDB`/`document.cookie` in frontend; state in memory only.
+- [x] `index.html`: no inline `<script>`, no `on*=` handlers, no `style=`; single `<script type=module src>`.
+- [x] `vercel.json` headers match spec §7 exactly (CSP, HSTS, nosniff, Referrer-Policy, Permissions-Policy); dev server applies the same headers and the UI runs with zero console errors under that CSP (Playwright, mock mode).
+- [x] `package.json`: runtime dep only `hono`; dev dep only `tailwindcss`; no DB/KV/storage packages.
+- [x] Token only inside AES-256-GCM sealed HttpOnly cookie; `GitHubError.toJSON` forwards only a truncated upstream `message` string, never body/headers/token; OAuth failures redirect with short codes only.
+- [x] OAuth `state` cookie checked with `timingSafeEqual`; state cookie cleared on callback.
+- [x] CSRF middleware global in `lib/app.js`: all non-GET/HEAD/OPTIONS require `X-GM-CSRF: 1` + `Origin === appOrigin`.
+- [x] Only allow-listed routes exist; `validateTarget` (owner/repo regex) on every `/repos/:owner/:repo*` route; branch/topic/new_owner/new_name validated; PATCH body keys restricted to `private`/`archived`; default/protected branches refused server-side (409) and disabled in UI.
+- [x] `Cache-Control: no-store` on all `/api/*` responses; GitHub 401 clears cookie → UI returns to login.
+- [x] A11y: skip link, `:focus-visible` ring, modals `role=dialog aria-modal` with focus trap, Esc/backdrop close, focus restore; all inputs labelled (`aria-label` or wrapping `<label>`); progress bars `role=progressbar` with values; live regions for counts/toasts; cleanup tabs now full WAI-ARIA tabs pattern (fixed in T10).
 
 ## Key facts
 - Entry pattern: `api/[...route].js` → `import { handle } from 'hono/vercel'`, `export const config = { runtime: 'edge' }`,
