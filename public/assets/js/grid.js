@@ -234,6 +234,7 @@ export function initGrid(panel) {
     if (r.archived) badges.push(el('span', { class: 'badge-warn', text: 'Archived' }));
     if (r.is_template) badges.push(el('span', { class: 'badge', text: 'Template' }));
     if (r.isEmpty === true) badges.push(el('span', { class: 'badge-danger', text: 'Empty' }));
+    if (r.transferPending) badges.push(el('span', { class: 'badge-warn', text: `Transfer pending → ${r.transferPending}` }));
     if (r.permissions && !r.permissions.admin) badges.push(el('span', { class: 'badge', text: 'No admin', title: 'You are not an admin of this repository' }));
     const aff = affiliationOf(r, login);
     if (aff !== 'owner') badges.push(el('span', { class: 'badge', text: aff === 'org' ? 'Org' : 'Collab' }));
