@@ -1,6 +1,9 @@
-// Live analytics computed from the in-memory repo list. Hand-written SVG charts, no library.
-import { el, svg, clear, formatNumber, formatBytesFromKB, formatDate, daysSince } from './ui.js';
+// Live analytics (GitHub Insights-like) computed from the in-memory repo list. CSS bars only, no library.
+// Rendering is lazy (only while the tab is visible) and computeAnalytics is memoized per repo-list version.
+import { el, clear, formatNumber, formatBytesFromKB, formatDate, daysSince } from './ui.js';
 import { state, on } from './state.js';
+import { icon, spinner } from './icons.js';
+import { langColor } from './langcolors.js';
 
 export const UNKNOWN_LANGUAGE = 'Unknown';
 const TOP_N = 10;
@@ -43,118 +46,140 @@ export function topLanguages(languages, max = 8) {
   return [...head, { name: 'Other', count, share, grouped: rest.length }];
 }
 
-const PALETTE = ['#38bdf8', '#a78bfa', '#34d399', '#fbbf24', '#fb7185', '#f472b6', '#2dd4bf', '#f97316', '#94a3b8'];
-
 // --- rendering --------------------------------------------------------------------------------
 
-function donut(segments, { size = 160, stroke = 22, label, sublabel }) {
-  const r = (size - stroke) / 2;
-  const c = size / 2;
-  const circ = 2 * Math.PI * r;
-  const total = segments.reduce((s, x) => s + x.value, 0);
-  const root = svg('svg', { viewBox: `0 0 ${size} ${size}`, width: size, height: size, role: 'img', 'aria-label': label ? `${label}: ${sublabel || ''}` : 'Donut chart', class: 'shrink-0' });
-  root.append(svg('circle', { cx: c, cy: c, r, fill: 'none', stroke: 'rgba(255,255,255,0.08)', 'stroke-width': stroke }));
-  let offset = 0;
-  if (total > 0) {
-    segments.forEach((s, i) => {
-      if (!s.value) return;
-      const len = (s.value / total) * circ;
-      const seg = svg('circle', {
-        cx: c, cy: c, r, fill: 'none', stroke: s.color || PALETTE[i % PALETTE.length], 'stroke-width': stroke,
-        'stroke-dasharray': `${len} ${circ - len}`, 'stroke-dashoffset': -offset, transform: `rotate(-90 ${c} ${c})`,
-      }, svg('title', {}, `${s.name}: ${formatNumber(s.value)}`));
-      root.append(seg);
-      offset += len;
-    });
-  }
-  if (label !== undefined) {
-    root.append(svg('text', { x: c, y: c - 4, 'text-anchor': 'middle', fill: '#f1f5f9', 'font-size': '22', 'font-weight': '600' }, label));
-    if (sublabel) root.append(svg('text', { x: c, y: c + 16, 'text-anchor': 'middle', fill: '#94a3b8', 'font-size': '11' }, sublabel));
-  }
-  return root;
+const pctText = (n, total) => (total ? `${(Math.round((n / total) * 1000) / 10).toFixed(1)}%` : '0%');
+
+function dot(color) {
+  const d = el('span', { class: 'lang-dot', 'aria-hidden': 'true' });
+  d.style.backgroundColor = color;
+  return d;
 }
 
-function legend(segments) {
-  const total = segments.reduce((s, x) => s + x.value, 0);
-  return el('ul', { class: 'space-y-1 text-sm', 'aria-label': 'Legend' }, ...segments.map((s, i) => el('li', { class: 'flex items-center gap-2' },
-    (() => { const dot = el('span', { class: 'inline-block h-2.5 w-2.5 shrink-0 rounded-full', 'aria-hidden': 'true' }); dot.style.backgroundColor = s.color || PALETTE[i % PALETTE.length]; return dot; })(),
-    el('span', { class: 'truncate text-slate-200', text: s.name }),
-    el('span', { class: 'ml-auto tabular-nums text-slate-400', text: `${formatNumber(s.value)} · ${total ? Math.round((s.value / total) * 100) : 0}%` }))));
-}
-
-/** Horizontal bars: items = [{ label, value, display, href }] */
-function bars(items, { ariaLabel }) {
-  const max = Math.max(0, ...items.map((i) => i.value));
-  const ul = el('ul', { class: 'space-y-2', 'aria-label': ariaLabel });
-  if (!items.length) ul.append(el('li', { class: 'text-sm text-slate-400', text: 'No data' }));
-  items.forEach((it, i) => {
-    const bar = el('div', { class: 'h-2 rounded-full', role: 'presentation' });
-    bar.style.width = `${max ? Math.max(2, Math.round((it.value / max) * 100)) : 0}%`;
-    bar.style.backgroundColor = PALETTE[i % PALETTE.length];
-    const name = it.href
-      ? el('a', { href: it.href, target: '_blank', rel: 'noopener noreferrer', class: 'truncate text-sky-300 hover:underline', text: it.label, title: it.label })
-      : el('span', { class: 'truncate text-slate-200', text: it.label, title: it.label });
-    ul.append(el('li', { class: 'space-y-1 text-sm' },
-      el('div', { class: 'flex items-center gap-3' }, name, el('span', { class: 'ml-auto shrink-0 tabular-nums text-slate-400', text: it.display ?? formatNumber(it.value) })),
-      el('div', { class: 'h-2 w-full rounded-full bg-white/5' }, bar)));
-  });
-  return ul;
-}
-
-function statCard(label, value, hint) {
-  return el('div', { class: 'glass p-4' },
-    el('p', { class: 'text-xs uppercase tracking-wide text-slate-400', text: label }),
-    el('p', { class: 'mt-1 text-2xl font-semibold tabular-nums', text: value }),
-    hint ? el('p', { class: 'mt-1 text-xs text-slate-400', text: hint }) : null);
+function tile(iconName, label, value, hint) {
+  return el('div', { class: 'Box stat-tile' },
+    el('div', { class: 'flex items-center gap-2 text-sm text-fg-muted' }, icon(iconName), el('span', { text: label })),
+    el('p', { class: 'stat-value', text: value }),
+    hint ? el('p', { class: 'm-0 text-xs text-fg-muted', text: hint }) : null);
 }
 
 function card(title, ...children) {
-  return el('section', { class: 'glass p-5 space-y-3', 'aria-label': title }, el('h2', { class: 'text-base font-semibold', text: title }), ...children);
+  return el('section', { class: 'Box min-w-0', 'aria-label': title },
+    el('div', { class: 'Box-header' }, el('h2', { class: 'Box-title', text: title })),
+    el('div', { class: 'Box-body space-y-3' }, ...children));
+}
+
+/** GitHub's segmented language bar + legend. segs = [{ name, value, color }] */
+function segmentedBar(segs, ariaLabel) {
+  const total = segs.reduce((s, x) => s + x.value, 0);
+  const bar = el('div', { class: 'seg-bar', role: 'img', 'aria-label': `${ariaLabel}: ${segs.map((x) => `${x.name} ${pctText(x.value, total)}`).join(', ')}` });
+  for (const x of segs) {
+    if (!x.value) continue;
+    const part = el('span', { class: 'seg-bar-item', title: `${x.name}: ${formatNumber(x.value)} (${pctText(x.value, total)})` });
+    part.style.width = `${(x.value / total) * 100}%`;
+    part.style.backgroundColor = x.color;
+    bar.append(part);
+  }
+  const legend = el('ul', { class: 'seg-legend', 'aria-label': `${ariaLabel} legend` }, ...segs.map((x) => el('li', { class: 'inline-flex items-center gap-2 text-xs' },
+    dot(x.color), el('span', { class: 'font-semibold', text: x.name }), el('span', { class: 'text-fg-muted', text: `${pctText(x.value, total)} · ${formatNumber(x.value)}` }))));
+  return [bar, legend];
+}
+
+/** Labeled meter: "Public 40 (66.7%)" + thin bar. */
+function meter(label, value, total, color) {
+  const fill = el('span', { class: 'meter-fill' });
+  fill.style.width = `${total ? (value / total) * 100 : 0}%`;
+  fill.style.backgroundColor = color;
+  return el('div', { class: 'space-y-1' },
+    el('div', { class: 'flex items-center gap-2 text-sm' }, dot(color), el('span', { text: label }),
+      el('span', { class: 'ml-auto tabular-nums text-fg-muted', text: `${formatNumber(value)} · ${pctText(value, total)}` })),
+    el('div', { class: 'meter', role: 'meter', 'aria-label': label, 'aria-valuemin': '0', 'aria-valuemax': String(total), 'aria-valuenow': String(value) }, fill));
+}
+
+/** Box list with thin bars: items = [{ label, value, display, href, language }] */
+function barList(title, items, { ariaLabel, note }) {
+  const max = Math.max(0, ...items.map((i) => i.value));
+  const ul = el('ol', { class: 'm-0 p-0', 'aria-label': ariaLabel });
+  if (!items.length) ul.append(el('li', { class: 'Box-row text-sm text-fg-muted', text: 'No data' }));
+  for (const it of items) {
+    const fill = el('span', { class: 'meter-fill' });
+    fill.style.width = `${max ? Math.max(1, (it.value / max) * 100) : 0}%`;
+    fill.style.backgroundColor = it.language ? langColor(it.language) : 'var(--accent-fg)';
+    ul.append(el('li', { class: 'Box-row py-2 space-y-1' },
+      el('div', { class: 'flex min-w-0 items-center gap-3 text-sm' },
+        el('a', { href: it.href, target: '_blank', rel: 'noopener noreferrer', class: 'min-w-0 truncate', text: it.label, title: it.label }),
+        el('span', { class: 'ml-auto shrink-0 tabular-nums text-xs text-fg-muted', text: it.display })),
+      el('div', { class: 'meter meter--thin', 'aria-hidden': 'true' }, fill)));
+  }
+  return el('section', { class: 'Box min-w-0', 'aria-label': title },
+    el('div', { class: 'Box-header' }, el('h2', { class: 'Box-title', text: title })),
+    ul, note ? el('div', { class: 'Box-footer py-2 text-xs text-fg-muted', text: note }) : null);
+}
+
+let memo = { version: -1, repos: null, len: -1, result: null };
+let version = 0;
+/** computeAnalytics memoized per repo-list version (bumped on every `repos` event) + identity/length. */
+function analyticsFor(repos, now) {
+  if (memo.version !== version || memo.repos !== repos || memo.len !== repos.length) {
+    memo = { version, repos, len: repos.length, result: computeAnalytics(repos, now) };
+  }
+  return memo.result;
 }
 
 export function renderAnalytics(host, repos, now = Date.now()) {
   clear(host);
-  if (!state.reposLoaded) return host.append(el('div', { class: 'glass p-5' }, el('p', { class: 'text-slate-300', text: 'Repositories are still loading…' })));
-  const a = computeAnalytics(repos, now);
+  if (!state.reposLoaded) return host.append(el('div', { class: 'flash', role: 'status' }, spinner(), el('span', { text: 'Repositories are still loading…' })));
+  const a = analyticsFor(repos, now);
   const t = a.totals;
-  if (!t.repos) return host.append(el('div', { class: 'glass p-5' }, el('p', { class: 'text-slate-300', text: 'No repositories loaded.' })));
-  const pct = (n) => `${Math.round((n / t.repos) * 100)}%`;
+  if (!t.repos) {
+    return host.append(el('div', { class: 'Box' }, el('div', { class: 'Blankslate' }, icon('graph', { size: 24 }),
+      el('h3', { class: 'Blankslate-title', text: 'No repositories loaded' }))));
+  }
+  host.append(el('div', { class: 'space-y-1' },
+    el('h2', { class: 'm-0 text-xl font-semibold', text: 'Insights' }),
+    el('p', { class: 'm-0 text-sm text-fg-muted', text: `Computed from ${formatNumber(t.repos)} loaded repositories.` })));
 
-  host.append(el('div', { class: 'grid gap-3 sm:grid-cols-2 lg:grid-cols-4' },
-    statCard('Repositories', formatNumber(t.repos), `${formatNumber(t.active)} active · ${formatNumber(t.archived)} archived`),
-    statCard('Stars received', formatNumber(t.stars), `${formatNumber(t.forkCount)} forks of your repos`),
-    statCard('Total storage', formatBytesFromKB(t.sizeKB), 'GitHub-reported size'),
-    statCard('Open issues', formatNumber(t.openIssues), 'across all loaded repositories')));
+  host.append(el('div', { class: 'grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6' },
+    tile('repo', 'Repositories', formatNumber(t.repos), `${formatNumber(t.active)} active`),
+    tile('star', 'Stars', formatNumber(t.stars), 'received'),
+    tile('database', 'Storage', formatBytesFromKB(t.sizeKB), 'GitHub-reported size'),
+    tile('issue-opened', 'Open issues', formatNumber(t.openIssues), 'incl. pull requests'),
+    tile('fork', 'Forks', formatNumber(t.forks), `${formatNumber(t.forkCount)} forks of your repos`),
+    tile('archive', 'Archived', formatNumber(t.archived), pctText(t.archived, t.repos))));
 
-  const langSegs = topLanguages(a.languages).map((l) => ({ name: l.name, value: l.count }));
-  host.append(el('div', { class: 'grid gap-4 lg:grid-cols-3' },
+  const langSegs = topLanguages(a.languages, 12).map((l) => ({
+    name: l.grouped ? `Other (${l.grouped})` : l.name, value: l.count,
+    color: l.grouped ? '#6e7681' : langColor(l.name),
+  }));
+  host.append(card('Languages', ...segmentedBar(langSegs, 'Languages'),
+    el('p', { class: 'm-0 text-xs text-fg-muted', text: `${formatNumber(a.languages.length)} languages · primary language per repository as reported by GitHub; repositories without a detected language count as Unknown.` })));
+
+  host.append(el('div', { class: 'grid gap-4 md:grid-cols-2' },
     card('Visibility',
-      el('div', { class: 'flex items-center gap-4' },
-        donut([{ name: 'Public', value: t.public, color: PALETTE[0] }, { name: 'Private', value: t.private, color: PALETTE[1] }], { label: formatNumber(t.repos), sublabel: 'repos' }),
-        legend([{ name: 'Public', value: t.public, color: PALETTE[0] }, { name: 'Private', value: t.private, color: PALETTE[1] }])),
-      el('div', { class: 'flex flex-wrap gap-2' },
-        el('span', { class: 'badge', text: `${pct(t.public)} public` }), el('span', { class: 'badge-warn', text: `${pct(t.private)} private` }))),
-    card('Forks & archive',
-      el('div', { class: 'flex items-center gap-4' },
-        donut([{ name: 'Sources', value: t.sources, color: PALETTE[2] }, { name: 'Forks', value: t.forks, color: PALETTE[3] }], { label: formatNumber(t.forks), sublabel: 'forks' }),
-        legend([{ name: 'Sources', value: t.sources, color: PALETTE[2] }, { name: 'Forks', value: t.forks, color: PALETTE[3] }])),
-      el('div', { class: 'flex flex-wrap gap-2' },
-        el('span', { class: 'badge-ok', text: `${formatNumber(t.active)} active` }), el('span', { class: 'badge', text: `${formatNumber(t.archived)} archived` }))),
-    card('Languages',
-      el('div', { class: 'flex items-center gap-4' },
-        donut(langSegs, { label: formatNumber(a.languages.length), sublabel: 'languages' }),
-        legend(langSegs)),
-      el('p', { class: 'text-xs text-slate-400', text: 'Primary language per repository as reported by GitHub; repositories without a detected language count as Unknown.' }))));
+      meter('Public', t.public, t.repos, 'var(--success-fg)'),
+      meter('Private', t.private, t.repos, 'var(--attention-fg)')),
+    card('Sources, forks & archive',
+      meter('Sources', t.sources, t.repos, 'var(--accent-fg)'),
+      meter('Forks', t.forks, t.repos, 'var(--done-fg)'),
+      meter('Archived', t.archived, t.repos, 'var(--fg-muted)'))));
 
   host.append(el('div', { class: 'grid gap-4 lg:grid-cols-3' },
-    card('Top 10 by stars', bars(a.byStars.map((r) => ({ label: r.full_name, value: r.stargazers_count || 0, display: `${formatNumber(r.stargazers_count || 0)} ★`, href: r.html_url })), { ariaLabel: 'Top repositories by stars' })),
-    card('Largest 10 by size', bars(a.bySize.map((r) => ({ label: r.full_name, value: r.size || 0, display: formatBytesFromKB(r.size), href: r.html_url })), { ariaLabel: 'Largest repositories' })),
-    card('Oldest untouched (active)', bars(a.oldest.map(({ repo, days }) => ({ label: repo.full_name, value: days, display: `${formatNumber(days)} d · ${formatDate(repo.pushed_at)}`, href: repo.html_url })), { ariaLabel: 'Repositories with the oldest last push' }),
-      el('p', { class: 'text-xs text-slate-400', text: 'Days since last push. Archived repositories are excluded.' }))));
+    barList('Top starred', a.byStars.map((r) => ({ label: r.full_name, value: r.stargazers_count || 0, display: `★ ${formatNumber(r.stargazers_count || 0)}`, href: r.html_url, language: r.language })), { ariaLabel: 'Top repositories by stars' }),
+    barList('Largest', a.bySize.map((r) => ({ label: r.full_name, value: r.size || 0, display: formatBytesFromKB(r.size), href: r.html_url, language: r.language })), { ariaLabel: 'Largest repositories' }),
+    barList('Oldest untouched', a.oldest.map(({ repo, days }) => ({ label: repo.full_name, value: days, display: `${formatNumber(days)} d · ${formatDate(repo.pushed_at)}`, href: repo.html_url, language: repo.language })),
+      { ariaLabel: 'Repositories with the oldest last push', note: 'Days since last push. Archived repositories are excluded.' })));
 }
 
 export function initAnalytics(section) {
-  const render = () => renderAnalytics(section, state.repos);
-  render();
-  on('repos', render);
+  let dirty = true;
+  let raf = 0;
+  const render = () => { dirty = false; renderAnalytics(section, state.repos); };
+  on('repos', () => {
+    version++;
+    dirty = true;
+    if (state.activeTab !== 'analytics' || raf) return; // hidden: render on tab switch
+    raf = requestAnimationFrame(() => { raf = 0; if (dirty && state.activeTab === 'analytics') render(); });
+  });
+  on('tab', (tab) => { if (tab === 'analytics' && dirty) render(); });
+  if (state.activeTab === 'analytics') render();
 }

@@ -265,6 +265,18 @@
   .octicon.fill-muted { fill: var(--fg-muted); }
   .octicon.fill-danger { fill: var(--danger-fg); }
 
+  /* ---------- Analytics ---------- */
+  .stat-tile { padding: 16px; contain: content; }
+  .stat-tile svg { fill: var(--fg-muted); }
+  .stat-value { margin: 8px 0 2px; font-size: 24px; font-weight: 600; line-height: 1.25; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .seg-bar { display: flex; height: 8px; overflow: hidden; border-radius: 6px; background-color: var(--border-muted); outline: 1px solid transparent; }
+  .seg-bar-item { height: 100%; }
+  .seg-bar-item + .seg-bar-item { box-shadow: inset 2px 0 0 var(--canvas-default); }
+  .seg-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0; padding: 0; list-style: none; }
+  .meter { display: block; height: 8px; overflow: hidden; border-radius: 6px; background-color: var(--border-muted); }
+  .meter--thin { height: 4px; }
+  .meter-fill { display: block; height: 100%; border-radius: inherit; }
+
   /* ---------- Segmented control ---------- */
   .SegmentedControl { display: inline-flex; padding: 2px; gap: 2px; background-color: var(--btn-bg); border: 1px solid var(--border-default); border-radius: var(--radius); max-width: 100%; overflow-x: auto; }
   .SegmentedControl-item { height: 28px; padding: 0 12px; font-size: 14px; color: var(--fg-default); background: transparent; border: 1px solid transparent; border-radius: 5px; cursor: pointer; white-space: nowrap; }
