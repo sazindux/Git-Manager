@@ -1,5 +1,5 @@
 # HANDOFF — UI UPGRADE PHASE (U0–U6)
-Updated: 2026-10-06 · Last task touched: U5 · Work directly on `main` (Vercel auto-deploys on push)
+Updated: 2026-10-06 · Last task touched: U6 · **UI UPGRADE COMPLETE** · Work directly on `main` (Vercel auto-deploys on push)
 
 ## Task status
 | ID | Task | Status | Commit |
@@ -23,31 +23,22 @@ Updated: 2026-10-06 · Last task touched: U5 · Work directly on `main` (Vercel 
 | U3 | Dialogs, bulk panel, toasts | done | 1722d17 |
 | U4 | Cleanup tab | done | 4ebe215 (+ follow-up) |
 | U5 | Analytics tab | done | 4327733 |
-| U6 | Performance pass, polish & final QA | pending | |
+| U6 | Performance pass, polish & final QA | done | 80b5597 (+ docs) |
 
 ## Current / next action
 UI phase (frontend only: `public/`, `src/styles.css`, `tailwind.config.js`, `scripts/mock-github.js`, tests).
-Next: **U6** — perf pass + polish + final QA (see prompt §8 U6): profile 1500-repo mock incl. a 100-item mock bulk
-delete (long tasks, re-render counts), remove legacy aliases at bottom of `src/styles.css` (`.glass .input .badge*
-.btn-ghost .btn-warn .progress*`) + Tailwind `ink-*` after grepping usages, drop `updateScopeState` dead code in
-actions.js, security grep, README look/entry wording, then mark "UI UPGRADE COMPLETE" with numbers.
-U5 verified (Playwright, 1500 mock): tab→analytics 64–96 ms first render, 7–12 ms when unchanged (memo + not dirty);
-tiles 1,500 / 703,500 / 58 GB / 5,997 / 300 / 88; 0 console errors at 1280/390. computeAnalytics unchanged.
-U4 verified: tab→cleanup 72–85 ms (was 128–205), empty scan + branch scan OK, default/protected rows locked.
-U3 verified (Playwright, mock): delete modal focus-in, button disabled until phrase + checkbox + 3 s countdown, Tab
-trap holds, run → Box panel (check/x icons, red bar on failure, Retry/Download), flash toast; Make-public modal Esc
-closes and focus returns to the `Actions` button. Destructive dialogs use `role=alertdialog`.
-U2 perf (Playwright, 1500 mock repos, `scripts/perf.mjs`, sync handler → next rAF): first rows 0.63 s, all 15 pages 1.9 s;
-search 9 ms, toggle one 5, select page 11, select all 1500 matching 4, clear 3, next page 41 (30 new rows), tab→repos 12.
-Remaining long tasks are from Cleanup (128 ms on switch) and Analytics (68 ms) re-rendering → fix in U4/U5.
-QA: `GM_MOCK_REPOS=1500 PORT=3077 npm run dev:mock` + `PLAYWRIGHT_BROWSERS_PATH=0 node scripts/qa.mjs /tmp/x` / `scripts/perf.mjs`.
-U0 baseline audit (lag sources, confirmed in code): body had 3 radial gradients + `background-attachment: fixed`;
-`.glass/.glass-strong`, sticky header and grid selection bar used `backdrop-filter`; grid `renderRows()` does
-`clear(tbody)` + rebuilds every cell on each `repos`/`selection` event; per-row listeners; analytics + cleanup
-re-render on every `repos` event even when hidden; `.input` had `w-full` → stacked filter selects.
-All gradients/blur removed in U0; render-path issues are U2/U4/U5 work.
-Legacy class aliases (`.glass .input .badge* .btn-ghost .btn-warn .progress*`, Tailwind `ink-*`) map onto the
-new components in `src/styles.css` so old markup still renders; delete them as each screen is rebuilt (U6 final).
+**UI UPGRADE COMPLETE (U0–U6).** No pending tasks. Next work only on new user requests.
+Final numbers (Playwright, headless Chromium, 1500 mock repos, `scripts/perf.mjs`; sync handler → next rAF, ms):
+first rows 0.65 s, all 15 API pages 1.7 s; search 5–12, toggle one 2–7, select page 11–12, select all 1500 matching 5,
+clear 2, next page 41–51, tab→repos 8–18, tab→cleanup 1–14 (idle pre-rendered; was 128–205), tab→analytics 25–61
+(was 68–96; one ~65 ms long task = first layout of the pre-rendered page). Mock bulk delete of 100 repos (`PERF_BULK=100`,
+1 s gap): 99 s, **0 long tasks**, list patched ≈1 time per deleted repo (29 mutation callbacks for 40 deletes);
+hidden tabs not re-rendered during the run. 0 console/CSP errors on all tabs at 1280/390 (only the expected `/api/me`
+401 on the logged-out landing). Keyboard: menus (Enter/Arrow/Esc + focus return), tab roving (←/→), focus ring,
+reduced motion verified. Security grep clean (no innerHTML/outerHTML/insertAdjacentHTML/console/storage/inline handlers/styles).
+QA: `GM_MOCK_REPOS=1500 PORT=3077 npm run dev:mock` + `PLAYWRIGHT_BROWSERS_PATH=0 node scripts/qa.mjs /tmp/x` / `[PERF_BULK=100] node scripts/perf.mjs`.
+U0 baseline (fixed): fixed radial-gradient body, backdrop-filter on glass/header/selection bar, full table rebuild per
+event, per-row listeners, hidden tabs re-rendering on every `repos`, `.input w-full` stacking the filter selects.
 
 ## Security checklist (T10, verified 2026-10-05)
 - [x] No `console.*` in lib/ api/ public/ (only scripts/dev.sh generates a dev secret locally).
@@ -86,7 +77,7 @@ new components in `src/styles.css` so old markup still renders; delete them as e
   - `public/assets/js/langcolors.js` → `LANG_COLORS`, `langColor(name)` (linguist or hashed hsl), `langDot(name)` (CSSOM bg).
   - `public/assets/js/config.js` → `APP_NAME = 'Git Manager'` (applied to title/header/landing by `main.js applyBranding()`).
   - `public/assets/js/main.js` (U1) → `applyBranding`, profile `createMenu` (login, scopes, GitHub profile, Sign out), `renderRate` (Label → attention <20%, danger <4%), `#count-repos` Counter on `repos`, WAI-ARIA tabs (`role=tab`, `aria-selected`, roving tabindex, ←/→/Home/End).
-  - `scripts/perf.mjs` → dev-only Playwright timing probe (load, search, toggle, select page/all, pager, tab switches, long tasks).
+  - `scripts/perf.mjs` → dev-only Playwright timing probe (load, search, toggle, select page/all, pager, tab switches, long tasks); `PERF_BULK=N` adds a mock bulk delete measuring long tasks + list mutations.
   - `ui.js` adds `relativeTime(iso)` ("3 days ago" / "on Mar 5, 2024").
   - `scripts/qa.mjs` → dev-only Playwright screenshots (landing + 3 tabs @1280/390, optional profile menu) + console error count. Playwright is installed with `--no-save` (never in package.json); needs `sudo npx playwright install-deps chromium` once per sandbox.
   - `public/assets/js/menu.js` → `createMenu({label, icon, buttonClass, align, items, ariaLabel, selectable, title, buttonContent})` → `{root, button, menu, setLabel, refresh, open, close}`; items `{label, icon, danger, checked, disabled, meta, dot, multi, keepOpen, onSelect}` | `{divider}` | `{header}` | `{text}`; Arrow/Home/End/Esc/Tab, click-outside, focus return; one menu open at a time.
@@ -112,6 +103,7 @@ new components in `src/styles.css` so old markup still renders; delete them as e
 - Tailwind config uses `export default` (package is ESM).
 
 ## Decisions & deviations from the prompt
+- U6: removed legacy aliases (`.glass* .input .badge* .btn-ghost .btn-warn .progress*`), Tailwind `ink-*`, unused `.SegmentedControl` and dead `actions.js updateScopeState()` (menu does scope checks). Kept spec primitives `.btn-invisible`/`.Label--success` though currently unused. Hidden Cleanup/Analytics are pre-rendered once via `requestIdleCallback` after the initial load (never during bulk runs). Cleanup chunk size 50. README title now `Git Manager`, edge-entry wording fixed.
 - U4: Cleanup repo lists render 100 rows at a time with a "Show N more" footer button (instead of pagination) to keep tab switches <100 ms; select-all still selects every listed repo, including unrendered ones. Branch confirm button is `btn-danger-solid`.
 - U0: work committed straight to `main` (UI-phase instruction), not the old PR branch. Test count is 68 (not 64; T12 added 4).
 - U0: Playwright is not installed in the sandbox (no npm/pip package); only the remote console-capture tool is available → mock mode verified 0 console errors on 1500 repos; timings unmeasured so far. U1: installed Playwright locally via `npm i --no-save` + system deps → screenshots work; only expected console error is the `/api/me` 401 on the logged-out landing.
@@ -140,7 +132,7 @@ new components in `src/styles.css` so old markup still renders; delete them as e
 
 ## Known issues / unverified
 - E2E of cleanup + analytics tabs verified only against the mock GitHub (Playwright, zero console errors); real-GitHub edge cases (e.g. compare 404 on unrelated histories → aheadBy null → not merged) handled but untested live.
-- T12 resolved (user confirms backend + all features work live). README still mentions the old edge entry; fix in U6 docs pass.
+- T12 resolved (user confirms backend + all features work live). README entry wording fixed in U6.
 
 ## User actions required
 - [ ] After each U-task push, check https://gitmanage.vercel.app (Vercel auto-deploys main).

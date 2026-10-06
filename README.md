@@ -1,10 +1,12 @@
-# Serverless GitHub Manager
+# Git Manager
 
 Bulk-manage your GitHub repositories from a single page: list, search and filter them, then
 **bulk delete, archive/unarchive, toggle visibility, transfer, edit topics**, run **cleanup tools**
 (forks, empty repositories, merged/stale branches) and view a **live analytics overview**.
+The UI follows GitHub's Primer dark look (not affiliated with GitHub) and stays fast with thousands of
+repositories (keyed rows, event delegation, rAF-batched renders, lazy hidden tabs).
 
-100% serverless and stateless: Vercel static hosting + one Hono edge function. No database, no KV,
+100% serverless and stateless: Vercel static hosting + one Hono Node function. No database, no KV,
 no analytics, no third-party services besides GitHub.
 
 ## Privacy model
@@ -97,14 +99,15 @@ npm run dev:mock       # → http://localhost:3000 ; open /api/auth/login to sig
 ## Project layout
 
 ```
-api/[...route].js   Vercel edge entry (Hono via hono/vercel)
+api/index.js        Vercel Node entry (Web-standard fetch export → Hono app; /api/* rewritten here)
 lib/                app.js (routes + middleware), session.js (AES-GCM cookie), oauth.js,
                     github.js (fetch wrapper, rate limits, safe errors), validate.js,
                     repos.js (repo/topic/transfer/branch handlers), branches.js (classifier)
-public/             index.html + assets/js/* (vanilla ES modules, no bundler)
-src/styles.css      Tailwind 3.4 entry + glassmorphism components
+public/             index.html + assets/js/* (vanilla ES modules, no bundler; icons.js Octicon-style SVGs,
+                    langcolors.js linguist colors, menu.js accessible dropdowns)
+src/styles.css      Tailwind 3.4 entry + Primer-dark tokens/components (.btn, .Box, .Label, .dropdown, …)
 test/               node:test suites
-scripts/            dev server + mock GitHub (development only, never deployed as functions)
+scripts/            dev server + mock GitHub (GM_MOCK_REPOS=1500), Playwright qa.mjs / perf.mjs (dev only)
 ```
 
 ## Rate limits and safety
