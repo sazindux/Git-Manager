@@ -1,5 +1,5 @@
-# HANDOFF — PROJECT COMPLETE
-Updated: 2026-10-05T19:25Z · Last task touched: T11 · Branch: main
+# HANDOFF — T12 DEPLOY HOTFIX IN PROGRESS
+Updated: 2026-10-06 · Last task touched: T12 · Target: main via PR #1 (genspark_ai_developer)
 
 ## Task status
 | ID | Task | Status | Commit |
@@ -16,11 +16,27 @@ Updated: 2026-10-05T19:25Z · Last task touched: T11 · Branch: main
 | T9 | Analytics | done | 994c346 |
 | T10 | Security & quality review | done | 89d3230 |
 | T11 | Docs & final QA | done | 8143228 |
+| T12 | Fix /api 404 on Vercel | in-progress | [PR #1](https://github.com/sazindux/Git-Manager/pull/1), user production verification pending |
 
 ## Current / next action
-All tasks T0–T11 are done. Remaining work is user-side only (see "User actions required"). If a live-deploy
-bug is reported, add it under "Known issues", fix it, and update the affected task row.
-Final QA: `npm run build` OK, `npm test` 64/64 pass, UI CSP-clean in mock mode (Playwright, 0 console errors).
+T0–T11 remain done; do not redo/refactor them. T12: investigate Vercel platform 404 at
+`https://gitmanage.vercel.app/api/auth/login`. Dashboard evidence C–F was not supplied.
+Public probes (2026-10-06): `/` 200 HTML; `/api/health` 200 `{"ok":true}`;
+`/api/nope` app JSON 404 with no-store; `/api/auth/login` and `/api/nope/deep` Vercel
+404 with `x-vercel-error: NOT_FOUND`. The function exists; nested platform path matching fails.
+Diagnostics added: first middleware `X-GM-Function: 1`; health reports edge/node. Tests cover
+health on both runtimes, app 404, nested login and CSRF rejection. Build + 67 tests pass locally.
+Routing attempt 1: Approach B (classic api/), consistent with documented project setup "Other"
+and functioning shallow API routes. Dashboard preset remains unknown; `framework: null` pins Other
+per current Vercel docs. Replaced catch-all with `api/index.js` Node fetch export and explicit
+`/api/:path*` → `/api/index` rewrite. Build + 68 tests pass, including the actual entry's fetch handler.
+Next: verify PR #1 is merged into main, redeploy that latest main on Vercel, confirm nested login + health headers.
+Keep T12 in-progress until the user confirms production works; do not attempt a second approach yet.
+No OAuth/security/dependency changes. Do not claim live routing verified until user redeploys.
+Use the required development branch + PR workflow; production verification remains user-side.
+T12 QA: `npm run build` OK, `npm test` 68/68 pass on Node 22.23.2; security headers/build/output/dependencies
+compared unchanged. Build only warns of outdated caniuse-lite (not updated; out of scope).
+T11 historical QA: 64/64 tests; UI CSP-clean in mock mode (Playwright, 0 console errors); not rerun for this routing-only fix.
 
 ## Security checklist (T10, verified 2026-10-05)
 - [x] No `console.*` in lib/ api/ public/ (only scripts/dev.sh generates a dev secret locally).
@@ -37,19 +53,22 @@ Final QA: `npm run build` OK, `npm test` 64/64 pass, UI CSP-clean in mock mode (
 - [x] A11y: skip link, `:focus-visible` ring, modals `role=dialog aria-modal` with focus trap, Esc/backdrop close, focus restore; all inputs labelled (`aria-label` or wrapping `<label>`); progress bars `role=progressbar` with values; live regions for counts/toasts; cleanup tabs now full WAI-ARIA tabs pattern (fixed in T10).
 
 ## Key facts
-- Entry pattern: `api/[...route].js` → `import { handle } from 'hono/vercel'`, `export const config = { runtime: 'edge' }`,
-  `export default handle(app)`. App in `lib/app.js` with `new Hono().basePath('/api')`. Import verified locally;
-  edge deploy on Vercel NOT yet verified (see Known issues).
+- Entry pattern (T12 Approach B): `api/index.js` exports `{ fetch(request) { return app.fetch(request); } }`
+  as default and `config = { runtime: 'nodejs' }`; `framework: null` pins Other; explicit rewrite
+  `/api/:path*` → `/api/index`. `lib/app.js` retains `new Hono().basePath('/api')`.
+  Node entry/paths/methods verified locally; original URL forwarding through Vercel's deployed rewrite
+  still needs the user's health/login checks. Old edge catch-all removed; do not restore it.
+  `public/` output, Tailwind buildCommand and security headers unchanged; no new dependencies.
 - Versions installed: hono 4.13.x, tailwindcss 3.4.x, Node 22 local (engines >=20).
 - Module map:
-  - `lib/app.js` → Hono app; middlewares: no-store, CSRF (non-GET needs `X-GM-CSRF: 1` + Origin === appOrigin); routes; `onError` maps `GitHubError` → JSON, clears cookie on 401.
+  - `lib/app.js` → Hono app; middlewares: X-GM-Function diagnostic, no-store, CSRF (non-GET needs `X-GM-CSRF: 1` + Origin === appOrigin); routes; `onError` maps `GitHubError` → JSON, clears cookie on 401.
   - `lib/session.js` → `seal/unseal(payload, secretB64)`, `makeSessionPayload`, `randomBase64Url`, `timingSafeEqual`, cookie helpers (`set/clear/readSessionCookie`, `set/read/clearStateCookie`), `sessionCookieName(url)`.
   - `lib/oauth.js` → `getEnv(c)` (c.env if has SESSION_SECRET else process.env), `appOrigin(c)`, handlers `login/callback/logout/me`, middleware `requireSession` (sets `c.var.session = {token, login, id}`).
   - `lib/github.js` → `ghFetch(token, path, {method, body, okStatuses, headers})` → `{status, data, rate, headers}`; throws `GitHubError(status, code, message, {retryAfter, rate})`; `mapError`, `rateInfo`, `applyRateHeaders(c, rate)`.
   - `lib/validate.js` → `isValidOwner/Repo/Branch`, `encodeBranch`, `normalizeTopic(s)`, `parsePositiveInt`, `MAX_TOPICS`.
   - `lib/repos.js` → `trimRepo`, `validateTarget` middleware (sets `c.var.target = {owner, repo, path}`), `listRepos`, `patchRepo`, `deleteRepo`, `mergeTopics` (pure), `putTopics`, `transferRepo`, `emptyCheck`, `listBranches` (GET repo → default branch; paginate branches ≤10 pages; per branch compare + commit date), `deleteBranch` (fetches repo + branch first; 409 `protected_branch` for default/protected), helpers `readJsonBody(c)`, `bad(c, msg)` (400 `bad_request`).
   - `lib/branches.js` → pure `classifyBranch(b, staleDays, now)` → `{merged, stale, ageDays, deletable}` (deletable = !default && !protected), `classifyBranches`, `DEFAULT_STALE_DAYS=90`.
-  - `api/[...route].js` → thin Vercel edge entry.
+  - `api/index.js` → thin Vercel Node Web Standard fetch entry; passes Request unchanged.
   - `src/styles.css` → Tailwind + components: `.glass .glass-strong .btn .btn-primary .btn-ghost .btn-danger .btn-warn .input .badge .badge-ok .badge-warn .badge-danger .progress .progress-bar`.
   - `public/index.html` → views `#view-loading/#view-landing/#view-dashboard`, header (avatar `#user-avatar`, `#user-login`, `#rate-badge`, `#btn-logout`), tab buttons `[data-tab]`, sections `#tab-repos` (`#repos-panel`), `#tab-cleanup`, `#tab-analytics`, `#toasts`, `#modal-root`. Script: `/assets/js/main.js` (module).
   - `public/assets/js/ui.js` → `el(tag, attrs, ...children)` (attrs: class, text, onClick…, dataset), `append`, `clear`, `show(node, bool)`, `$`, `$$`, `svg`, `formatNumber`, `formatBytesFromKB`, `formatDate`, `daysSince`, `debounce`, `sleep(ms, signal)`.
@@ -73,6 +92,17 @@ Final QA: `npm run build` OK, `npm test` 64/64 pass, UI CSP-clean in mock mode (
 - Tailwind config uses `export default` (package is ESM); color palette `ink-950/900/800/700`.
 
 ## Decisions & deviations from the prompt
+- T12: chose B, not Hono zero-config A. Live shallow routes prove a deployed API function while nested
+  paths miss it; README/handoff prescribe Other. Dashboard C is unknown, so explicitly pin Other rather
+  than infer it. No root Hono entry or second competing deployment strategy added.
+- Current docs consulted 2026-10-06: [NOT_FOUND](https://vercel.com/docs/errors/NOT_FOUND),
+  [Node api/ functions](https://vercel.com/docs/functions/runtimes/node-js),
+  [Web Standard fetch export](https://vercel.com/docs/functions/functions-api-reference#fetch-web-standard),
+  [framework null and wildcard rewrites](https://vercel.com/docs/project-configuration/vercel-json),
+  [Vercel Hono guide](https://vercel.com/docs/frameworks/backend/hono),
+  [Hono Vercel guide](https://hono.dev/docs/getting-started/vercel). Both Hono guides support zero-config
+  root/src entrypoints; Vercel documents public static assets. B avoids changing this project's static build.
+- Required branch/PR workflow used, with pushed checkpoints squashed before PR updates; user requested main.
 - Added `scripts/dev-server.js` + `scripts/mock-github.js` (dev-only, no deps, never imported by lib/api) so the UI can be verified without Vercel CLI or real OAuth. CSP-clean verified via Playwright on the landing view.
 - `public/assets/styles.css` is gitignored and produced at build time (keeps diffs clean).
 - Test script uses a glob instead of `node --test test/` (directory arg not supported by Node 22).
@@ -83,14 +113,31 @@ Final QA: `npm run build` OK, `npm test` 64/64 pass, UI CSP-clean in mock mode (
 
 ## Known issues / unverified
 - E2E of cleanup + analytics tabs verified only against the mock GitHub (Playwright, zero console errors); real-GitHub edge cases (e.g. compare 404 on unrelated histories → aheadBy null → not merged) handled but untested live.
-- Edge runtime + `hono/vercel` on real Vercel deploy not verified from sandbox (no Vercel access). If `/api/health`
-  fails after deploy, fall back: remove `config` export and use the Node pattern (`export const GET = handle(app)` etc.).
+- T12: original production nested-only platform 404 reproduced. Node + explicit rewrite passes local
+  tests but awaits real deploy/user verification. No Vercel dashboard/build access; C–F remain unknown.
+  GitHub token cannot read statusCheckRollup (integration permission error); no remote CI result claimed.
+  Next check: latest Production Ready deployment must contain PR #1's main commit and list `api/index`
+  as a Node function in Functions/Resources (or its function build line). Root Directory must be blank;
+  effective preset Other (`framework: null`), build `npm run build`, output `public`, Node 22.x or newer.
+  If deployment URL works but gitmanage.vercel.app fails, check domain assignment to that Production deployment.
+- README still describes the superseded edge entry; intentionally untouched under T12 scope. This handoff's
+  Entry pattern is authoritative. No further refactor/dependency/feature changes.
 
 ## User actions required
 - [ ] Run README "Manual QA checklist" against the live deployment with a throwaway repo.
-- [ ] Import repo into Vercel (framework: Other; build = `npm run build`, output = `public`) and deploy; check `/api/health`.
-- [ ] Create GitHub OAuth App: homepage `https://<domain>`, callback `https://<domain>/api/auth/callback`.
-- [ ] Set `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET` (base64 of 32 random bytes), optional `APP_URL` in Vercel; redeploy.
+- [ ] Vercel → Project → Settings → Build & Deployment: Root Directory blank, Other, build `npm run build`,
+  output `public`, Node 22.x+. Deployments → latest main → Redeploy; verify Production Ready + `api/index` Node resource.
+- [ ] `https://gitmanage.vercel.app/api/health` → `{"ok":true,"runtime":"node"}` and `X-GM-Function: 1`.
+- [ ] Click Sign in with GitHub; must reach GitHub or an app redirect, not Vercel NOT_FOUND.
+  `/?error=server_config`: set nonempty Production `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`,
+  `SESSION_SECRET` (base64 of 32 random bytes), then redeploy. Never paste secret values.
+- [ ] GitHub OAuth App callback exactly `https://gitmanage.vercel.app/api/auth/callback`; homepage and
+  optional `APP_URL` exactly `https://gitmanage.vercel.app` (no trailing path). Check these if redirect_uri mismatch.
+- [ ] After authorization, `bad_state`: state cookie missing/mismatched, inspect Secure/SameSite/domain.
+  `bad_code`: this codebase means missing/invalid callback code; retry login. Token exchange failure is
+  actually named `exchange_failed` here (not token_exchange): verify matching client ID/secret, retry fresh login.
+- [ ] If still failing, paste health status/body + X-GM-Function, login status/error (redact cookies, codes,
+  state and tokens), deployment commit/Ready status, Framework/Root/Output settings, and build/resource line for `api/index`.
 
 ## How to run / verify
 ```
