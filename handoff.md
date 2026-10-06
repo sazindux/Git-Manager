@@ -1,5 +1,5 @@
 # HANDOFF — UI UPGRADE PHASE (U0–U6)
-Updated: 2026-10-06 · Last task touched: U0 · Work directly on `main` (Vercel auto-deploys on push)
+Updated: 2026-10-06 · Last task touched: U1 · Work directly on `main` (Vercel auto-deploys on push)
 
 ## Task status
 | ID | Task | Status | Commit |
@@ -18,7 +18,7 @@ Updated: 2026-10-06 · Last task touched: U0 · Work directly on `main` (Vercel 
 | T11 | Docs & final QA | done | 8143228 |
 | T12 | Fix /api 404 on Vercel | done (user: backend live) | cc0daa5 |
 | U0 | Audit, Primer tokens & CSS foundation | done | 9c74392 |
-| U1 | App shell & landing page | pending | |
+| U1 | App shell & landing page | done | f9fce6f |
 | U2 | Repositories list + performance core | pending | |
 | U3 | Dialogs, bulk panel, toasts | pending | |
 | U4 | Cleanup tab | pending | |
@@ -27,10 +27,12 @@ Updated: 2026-10-06 · Last task touched: U0 · Work directly on `main` (Vercel 
 
 ## Current / next action
 UI phase (frontend only: `public/`, `src/styles.css`, `tailwind.config.js`, `scripts/mock-github.js`, tests).
-Next: **U1** — rewrite `public/index.html` shell (header bar #010409 + neutral `appMark()` + `APP_NAME`,
-rate pill, avatar → `createMenu` profile dropdown with scopes + Sign out, UnderlineNav tabs with `.Counter`),
-landing page (centered, Box, green sign-in button w/ `mark-github` icon), update `main.js` (tabs use
-`aria-selected` on `.UnderlineNav-item`; keep `[data-tab]` + `setTab`). Introduce `APP_NAME` in a new `config.js`.
+Next: **U2** — rebuild `grid.js` rendering (keep `loadAllRepos`, `applyFilters`, `affiliationOf`, `isLikelyEmpty`
+exports/semantics): filter row (search w/ icon + `createMenu` Type/Language/Sort/Affiliation + Reload), results line,
+Box list whose header becomes bulk bar (`Actions ▾` → emit existing `bulk-action` events; check `actions.js`
+`updateScopeState()` which disables `[data-action]` buttons — menu items need equivalent disabling), 30/page pager,
+keyed row cache + patching, delegation, rAF scheduler, precomputed haystack/sort keys, progressive first page.
+QA: `GM_MOCK_REPOS=1500 PORT=3077 npm run dev:mock` + `PLAYWRIGHT_BROWSERS_PATH=0 QA_MENU=1 node scripts/qa.mjs /tmp/x`.
 U0 baseline audit (lag sources, confirmed in code): body had 3 radial gradients + `background-attachment: fixed`;
 `.glass/.glass-strong`, sticky header and grid selection bar used `backdrop-filter`; grid `renderRows()` does
 `clear(tbody)` + rebuilds every cell on each `repos`/`selection` event; per-row listeners; analytics + cleanup
@@ -74,6 +76,9 @@ new components in `src/styles.css` so old markup still renders; delete them as e
   - `tailwind.config.js` → colors `canvas{,subtle,inset}`, `border{,muted}`, `fg{,muted,subtle}`, `accent{,link,emphasis}`, `success`, `danger`, `attention`, `done` (+ legacy `ink-*`); system font stacks.
   - `public/assets/js/icons.js` → `icon(name, {size, class, label})` Octicon-style SVG (names in `ICON_NAMES`), `spinner()`, `appMark(size)` neutral logo.
   - `public/assets/js/langcolors.js` → `LANG_COLORS`, `langColor(name)` (linguist or hashed hsl), `langDot(name)` (CSSOM bg).
+  - `public/assets/js/config.js` → `APP_NAME = 'Git Manager'` (applied to title/header/landing by `main.js applyBranding()`).
+  - `public/assets/js/main.js` (U1) → `applyBranding`, profile `createMenu` (login, scopes, GitHub profile, Sign out), `renderRate` (Label → attention <20%, danger <4%), `#count-repos` Counter on `repos`, WAI-ARIA tabs (`role=tab`, `aria-selected`, roving tabindex, ←/→/Home/End).
+  - `scripts/qa.mjs` → dev-only Playwright screenshots (landing + 3 tabs @1280/390, optional profile menu) + console error count. Playwright is installed with `--no-save` (never in package.json); needs `sudo npx playwright install-deps chromium` once per sandbox.
   - `public/assets/js/menu.js` → `createMenu({label, icon, buttonClass, align, items, ariaLabel, selectable, title, buttonContent})` → `{root, button, menu, setLabel, refresh, open, close}`; items `{label, icon, danger, checked, disabled, meta, dot, multi, keepOpen, onSelect}` | `{divider}` | `{header}` | `{text}`; Arrow/Home/End/Esc/Tab, click-outside, focus return; one menu open at a time.
   - `public/index.html` → views `#view-loading/#view-landing/#view-dashboard`, header (avatar `#user-avatar`, `#user-login`, `#rate-badge`, `#btn-logout`), tab buttons `[data-tab]`, sections `#tab-repos` (`#repos-panel`), `#tab-cleanup`, `#tab-analytics`, `#toasts`, `#modal-root`. Script: `/assets/js/main.js` (module).
   - `public/assets/js/ui.js` → `el(tag, attrs, ...children)` (attrs: class, text, onClick…, dataset), `append`, `clear`, `show(node, bool)`, `$`, `$$`, `svg`, `formatNumber`, `formatBytesFromKB`, `formatDate`, `daysSince`, `debounce`, `sleep(ms, signal)`.
@@ -98,7 +103,8 @@ new components in `src/styles.css` so old markup still renders; delete them as e
 
 ## Decisions & deviations from the prompt
 - U0: work committed straight to `main` (UI-phase instruction), not the old PR branch. Test count is 68 (not 64; T12 added 4).
-- U0: Playwright is not installed in the sandbox (no npm/pip package); only the remote console-capture tool is available → mock mode verified 0 console errors on 1500 repos; timings unmeasured so far.
+- U0: Playwright is not installed in the sandbox (no npm/pip package); only the remote console-capture tool is available → mock mode verified 0 console errors on 1500 repos; timings unmeasured so far. U1: installed Playwright locally via `npm i --no-save` + system deps → screenshots work; only expected console error is the `/api/me` 401 on the logged-out landing.
+- U1: removed the header `#user-login` text and `#btn-logout` button; login + Sign out now live in the avatar dropdown (spec). Landing has no glass card; the GitHub mark appears only inside the sign-in button.
 - U0: the sed pass added base `btn` to every legacy `btn-*` usage because new variants are modifiers (Primer style), not standalone.
 - T12: chose B, not Hono zero-config A. Live shallow routes prove a deployed API function while nested
   paths miss it; README/handoff prescribe Other. Dashboard C is unknown, so explicitly pin Other rather
