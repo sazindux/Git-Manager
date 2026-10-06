@@ -1,25 +1,44 @@
 // Dev-only: GM_MOCK=1 replaces globalThis.fetch for github.com/api.github.com with an in-memory fake.
 // Never imported by lib/ or api/. Lets you exercise the UI without real OAuth credentials.
-const LANGS = ['JavaScript', 'TypeScript', 'Python', 'Go', 'Rust', null, 'Shell', 'HTML'];
+const LANGS = ['JavaScript', 'TypeScript', 'Python', 'Go', 'Rust', null, 'Shell', 'HTML', 'CSS', 'Java', 'Dart', 'C++', 'Kotlin', 'Swift', 'Vue', 'Ruby', 'PHP', 'Elixir', 'Zig', 'Dockerfile'];
 const OWNERS = [{ login: 'mockuser', type: 'User' }, { login: 'mock-org', type: 'Organization' }, { login: 'friend', type: 'User' }];
+const WORDS = ['api', 'cli', 'web', 'bot', 'ui', 'kit', 'sdk', 'lab', 'demo', 'docs', 'tools', 'core', 'app', 'site', 'infra', 'notes'];
+const PREFIX = ['awesome', 'tiny', 'fast', 'my', 'next', 'open', 'hello', 'super', 'react', 'rust', 'go', 'py'];
+const TOPICS = ['tooling', 'cli', 'react', 'machine-learning', 'devops', 'hacktoberfest', 'game', 'dotfiles', 'nodejs', 'docker', 'api', 'security'];
+const DESCS = [
+  'A small experiment',
+  'Personal website and blog built with a static site generator, deployed automatically on every push',
+  'Command-line utility for batch renaming files <b>not html</b> & "quotes"',
+  'Fork of an upstream project with local patches',
+  'Very long description: ' + 'lorem ipsum dolor sit amet consectetur adipiscing elit '.repeat(6).trim(),
+  'Dotfiles, scripts and configuration for my development machines',
+  'Prototype API server with authentication and rate limiting',
+];
 const repos = new Map();
 const branches = new Map();
-const N = Number(process.env.GM_MOCK_REPOS || 240);
+// GM_MOCK_REPOS=1500 for scale testing (default 240).
+const N = Math.max(1, Math.min(10000, Number(process.env.GM_MOCK_REPOS) || 240));
 
 function seed() {
   for (let i = 1; i <= N; i++) {
     const owner = OWNERS[i % 7 === 0 ? 1 : i % 11 === 0 ? 2 : 0];
     const days = (i * 37) % 1400;
-    const pushed = new Date(Date.now() - days * 86400000).toISOString();
-    const name = `repo-${String(i).padStart(3, '0')}${i % 5 === 0 ? '-fork' : ''}`;
+    const pushed = new Date(Date.now() - days * 86400000 - (i % 24) * 3600000).toISOString();
+    const base = `${PREFIX[i % PREFIX.length]}-${WORDS[(i * 7) % WORDS.length]}`;
+    const name = `${base}-${String(i).padStart(4, '0')}${i % 5 === 0 ? '-fork' : ''}`;
+    const empty = i % 13 === 0;
+    const nTopics = i % 4 === 0 ? 0 : (i % 5) + (i % 3 === 0 ? 1 : 0);
+    const topics = [];
+    for (let t = 0; t < nTopics; t++) { const tp = TOPICS[(i + t * 5) % TOPICS.length]; if (!topics.includes(tp)) topics.push(tp); }
     repos.set(i, {
       id: i, name, full_name: `${owner.login}/${name}`, owner,
       private: i % 3 === 0, visibility: i % 3 === 0 ? 'private' : 'public', fork: i % 5 === 0,
-      archived: i % 17 === 0, disabled: false, is_template: false,
-      description: i % 4 === 0 ? null : `Description for repository number ${i} <b>not html</b>`,
-      language: LANGS[i % LANGS.length], stargazers_count: (i * 13) % 500, forks_count: (i * 7) % 60,
-      open_issues_count: i % 9, size: i % 13 === 0 ? 0 : (i * 311) % 90000,
-      pushed_at: pushed, updated_at: pushed, default_branch: 'main', topics: i % 3 === 0 ? ['tooling', `t${i % 6}`] : [],
+      archived: i % 17 === 0, disabled: false, is_template: i % 29 === 0,
+      description: i % 6 === 0 ? null : `${DESCS[i % DESCS.length]} (#${i})`,
+      language: empty ? null : LANGS[i % LANGS.length], stargazers_count: i % 10 === 0 ? (i * 131) % 9000 : (i * 13) % 50, forks_count: (i * 7) % 60,
+      open_issues_count: i % 9, size: empty ? 0 : (i * 311) % 90000,
+      pushed_at: pushed, updated_at: pushed, created_at: new Date(Date.now() - (days + 400) * 86400000).toISOString(),
+      default_branch: 'main', topics,
       html_url: `https://github.com/${owner.login}/${name}`,
       permissions: { admin: owner.login !== 'friend', maintain: true, push: true },
     });

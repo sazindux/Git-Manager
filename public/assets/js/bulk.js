@@ -134,10 +134,10 @@ export class BulkPanel {
     const bar = el('div', { class: 'progress-bar w-0' });
     const counter = el('span', { class: 'text-sm tabular-nums text-slate-300', text: `0 / ${formatNumber(items.length)}` });
     const status = el('span', { class: 'text-sm text-slate-400', text: 'Running…' });
-    const cancelBtn = el('button', { type: 'button', class: 'btn-ghost py-1.5', onClick: () => { this.controller?.abort(); status.textContent = 'Cancelling after current item…'; cancelBtn.disabled = true; } }, 'Cancel');
-    const retryBtn = el('button', { type: 'button', class: 'btn-ghost py-1.5' }, 'Retry failed');
-    const logBtn = el('button', { type: 'button', class: 'btn-ghost py-1.5' }, 'Download log (JSON)');
-    const closeBtn = el('button', { type: 'button', class: 'btn-ghost py-1.5', 'aria-label': 'Close progress panel', onClick: () => { clear(host); show(host, false); } }, 'Close');
+    const cancelBtn = el('button', { type: 'button', class: 'btn btn-ghost py-1.5', onClick: () => { this.controller?.abort(); status.textContent = 'Cancelling after current item…'; cancelBtn.disabled = true; } }, 'Cancel');
+    const retryBtn = el('button', { type: 'button', class: 'btn btn-ghost py-1.5' }, 'Retry failed');
+    const logBtn = el('button', { type: 'button', class: 'btn btn-ghost py-1.5' }, 'Download log (JSON)');
+    const closeBtn = el('button', { type: 'button', class: 'btn btn-ghost py-1.5', 'aria-label': 'Close progress panel', onClick: () => { clear(host); show(host, false); } }, 'Close');
     show(retryBtn, false); show(logBtn, false); show(closeBtn, false);
     const list = el('ul', { class: 'max-h-64 divide-y divide-white/5 overflow-y-auto text-sm', 'aria-label': 'Per-item results' });
     const rows = new Map();

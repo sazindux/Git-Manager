@@ -128,10 +128,10 @@ export function initGrid(panel) {
   const selAffiliation = mkSelect('Affiliation', 'affiliation', [['all', 'All affiliations'], ['owner', 'Owned by me'], ['collaborator', 'Collaborator'], ['org', 'Organization']]);
   const selLanguage = mkSelect('Language', 'language', [['all', 'All languages']]);
   const selSort = mkSelect('Sort by', 'sort', [['pushed', 'Last push'], ['name', 'Name'], ['stars', 'Stars'], ['forks', 'Forks'], ['size', 'Size']]);
-  const dirBtn = el('button', { type: 'button', class: 'btn-ghost py-1.5', 'aria-label': 'Toggle sort direction', title: 'Sort direction' }, '↓');
+  const dirBtn = el('button', { type: 'button', class: 'btn btn-ghost py-1.5', 'aria-label': 'Toggle sort direction', title: 'Sort direction' }, '↓');
   const emptyChk = el('input', { type: 'checkbox', class: 'h-4 w-4 rounded accent-sky-400' });
   const emptyLabel = el('label', { class: 'flex items-center gap-2 text-sm text-slate-300 whitespace-nowrap' }, emptyChk, 'Empty only');
-  const reloadBtn = el('button', { type: 'button', class: 'btn-ghost py-1.5', title: 'Reload repositories from GitHub' }, 'Reload');
+  const reloadBtn = el('button', { type: 'button', class: 'btn btn-ghost py-1.5', title: 'Reload repositories from GitHub' }, 'Reload');
   const countText = el('span', { class: 'text-sm text-slate-400', 'aria-live': 'polite' });
 
   const toolbar = el('div', { class: 'space-y-3 border-b border-white/10 p-4' },
@@ -144,21 +144,21 @@ export function initGrid(panel) {
 
   // Selection bar
   const selCount = el('span', { class: 'font-medium text-slate-100' });
-  const selectFilteredBtn = el('button', { type: 'button', class: 'btn-ghost py-1.5' });
-  const clearSelBtn = el('button', { type: 'button', class: 'btn-ghost py-1.5', onClick: () => clearSelection() }, 'Clear');
-  const actionBtn = (type, label, cls = 'btn-ghost') =>
+  const selectFilteredBtn = el('button', { type: 'button', class: 'btn btn-ghost py-1.5' });
+  const clearSelBtn = el('button', { type: 'button', class: 'btn btn-ghost py-1.5', onClick: () => clearSelection() }, 'Clear');
+  const actionBtn = (type, label, cls = 'btn btn-ghost') =>
     el('button', { type: 'button', class: `${cls} py-1.5`, dataset: { action: type }, onClick: () => emit('bulk-action', { type }) }, label);
   const actionButtons = [
     actionBtn('private', 'Make private'),
-    actionBtn('public', 'Make public', 'btn-warn'),
+    actionBtn('public', 'Make public', 'btn btn-warn'),
     actionBtn('archive', 'Archive'),
     actionBtn('unarchive', 'Unarchive'),
     actionBtn('topics', 'Topics'),
     actionBtn('transfer', 'Transfer'),
-    actionBtn('delete', 'Delete', 'btn-danger'),
+    actionBtn('delete', 'Delete', 'btn btn-danger'),
   ];
   const selectionBar = el('div', {
-    class: 'sticky top-[3.6rem] z-20 flex flex-wrap items-center gap-2 border-b border-sky-400/30 bg-ink-900/90 px-4 py-2 backdrop-blur-xl md:top-[3.6rem]',
+    class: 'sticky top-[3.6rem] z-20 flex flex-wrap items-center gap-2 border-b border-sky-400/30 bg-ink-900/90 px-4 py-2 md:top-[3.6rem]',
     role: 'region', 'aria-label': 'Selection actions',
   }, el('span', { class: 'text-sm text-slate-300' }, selCount, ' selected'), selectFilteredBtn, clearSelBtn,
   el('div', { class: 'ml-auto flex flex-wrap gap-2' }, ...actionButtons));
@@ -179,8 +179,8 @@ export function initGrid(panel) {
   show(emptyState, false);
 
   // Pagination
-  const prevBtn = el('button', { type: 'button', class: 'btn-ghost py-1.5', onClick: () => { page -= 1; renderRows(); } }, 'Previous');
-  const nextBtn = el('button', { type: 'button', class: 'btn-ghost py-1.5', onClick: () => { page += 1; renderRows(); } }, 'Next');
+  const prevBtn = el('button', { type: 'button', class: 'btn btn-ghost py-1.5', onClick: () => { page -= 1; renderRows(); } }, 'Previous');
+  const nextBtn = el('button', { type: 'button', class: 'btn btn-ghost py-1.5', onClick: () => { page += 1; renderRows(); } }, 'Next');
   const pageText = el('span', { class: 'text-sm text-slate-400' });
   const pager = el('div', { class: 'flex items-center justify-between gap-3 border-t border-white/10 p-3' }, pageText,
     el('div', { class: 'flex gap-2' }, prevBtn, nextBtn));

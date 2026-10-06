@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="/assets/styles.css">
 </head>
 <body>
-  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 btn-primary">Skip to content</a>
+  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 btn btn-primary">Skip to content</a>
 
   <!-- Landing / login -->
   <section id="view-landing" hidden class="mx-auto flex min-h-screen max-w-3xl items-center justify-center p-6">
@@ -20,7 +20,7 @@
       <h1 class="text-3xl md:text-4xl font-semibold tracking-tight">GitHub Manager</h1>
       <p class="mx-auto mt-3 max-w-xl text-slate-300">Bulk delete, archive, transfer, change visibility and clean up your repositories. Stateless, serverless, nothing stored.</p>
       <div class="mt-8">
-        <a id="btn-login" href="/api/auth/login" class="btn-primary px-6 py-3 text-base">Sign in with GitHub</a>
+        <a id="btn-login" href="/api/auth/login" class="btn btn-primary px-6 py-3 text-base">Sign in with GitHub</a>
       </div>
       <p class="mt-6 text-xs text-slate-400">Requests scopes <code class="font-mono">repo</code>, <code class="font-mono">delete_repo</code>, <code class="font-mono">read:org</code>. Your token lives only in an encrypted HttpOnly cookie for up to 8 hours.</p>
     </div>
@@ -28,25 +28,25 @@
 
   <!-- Dashboard -->
   <div id="view-dashboard" hidden class="min-h-screen">
-    <header class="sticky top-0 z-30 border-b border-white/10 bg-ink-950/70 backdrop-blur-xl">
+    <header class="sticky top-0 z-30 border-b border-white/10 bg-ink-950/70">
       <div class="mx-auto flex max-w-screen-2xl items-center gap-3 px-4 py-3">
         <span class="text-lg font-semibold tracking-tight">GitHub Manager</span>
         <nav aria-label="Sections" class="ml-4 hidden gap-1 md:flex" id="nav-tabs">
-          <button type="button" class="btn-ghost py-1.5" data-tab="repos" aria-pressed="true">Repositories</button>
-          <button type="button" class="btn-ghost py-1.5" data-tab="cleanup" aria-pressed="false">Cleanup</button>
-          <button type="button" class="btn-ghost py-1.5" data-tab="analytics" aria-pressed="false">Analytics</button>
+          <button type="button" class="btn btn-ghost py-1.5" data-tab="repos" aria-pressed="true">Repositories</button>
+          <button type="button" class="btn btn-ghost py-1.5" data-tab="cleanup" aria-pressed="false">Cleanup</button>
+          <button type="button" class="btn btn-ghost py-1.5" data-tab="analytics" aria-pressed="false">Analytics</button>
         </nav>
         <div class="ml-auto flex items-center gap-3">
           <span id="rate-badge" class="badge" title="GitHub API requests remaining">API: —</span>
           <img id="user-avatar" alt="" class="h-8 w-8 rounded-full border border-white/10" width="32" height="32">
           <span id="user-login" class="hidden text-sm text-slate-200 sm:inline"></span>
-          <button id="btn-logout" type="button" class="btn-ghost py-1.5">Sign out</button>
+          <button id="btn-logout" type="button" class="btn btn-ghost py-1.5">Sign out</button>
         </div>
       </div>
       <nav aria-label="Sections (mobile)" class="flex gap-1 px-4 pb-3 md:hidden" id="nav-tabs-mobile">
-        <button type="button" class="btn-ghost flex-1 py-1.5" data-tab="repos" aria-pressed="true">Repos</button>
-        <button type="button" class="btn-ghost flex-1 py-1.5" data-tab="cleanup" aria-pressed="false">Cleanup</button>
-        <button type="button" class="btn-ghost flex-1 py-1.5" data-tab="analytics" aria-pressed="false">Analytics</button>
+        <button type="button" class="btn btn-ghost flex-1 py-1.5" data-tab="repos" aria-pressed="true">Repos</button>
+        <button type="button" class="btn btn-ghost flex-1 py-1.5" data-tab="cleanup" aria-pressed="false">Cleanup</button>
+        <button type="button" class="btn btn-ghost flex-1 py-1.5" data-tab="analytics" aria-pressed="false">Analytics</button>
       </nav>
     </header>
 

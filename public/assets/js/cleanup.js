@@ -44,7 +44,7 @@ export function initCleanup(section) {
   for (const t of tabs) {
     nav.append(el('button', {
       type: 'button', role: 'tab', id: `cleanup-tab-${t.id}`, 'aria-controls': 'cleanup-panel',
-      class: 'btn-ghost py-1.5 aria-selected:bg-sky-500/20 aria-selected:border-sky-400/40',
+      class: 'btn btn-ghost py-1.5 aria-selected:bg-sky-500/20 aria-selected:border-sky-400/40',
       dataset: { tab: t.id }, 'aria-selected': 'false', onClick: () => activate(t),
     }, t.label));
   }
@@ -116,7 +116,7 @@ function repoTable({ repos, selected, extraCols = [], onChange }) {
 }
 
 function deleteBar({ selected, label, onDelete }) {
-  const btn = el('button', { type: 'button', class: 'btn-danger py-1.5', onClick: onDelete });
+  const btn = el('button', { type: 'button', class: 'btn btn-danger py-1.5', onClick: onDelete });
   const count = el('span', { class: 'text-sm text-slate-300', 'aria-live': 'polite' });
   const bar = el('div', { class: 'flex flex-wrap items-center gap-3' }, count, btn);
   const update = () => {
@@ -180,7 +180,7 @@ function mountEmpty(body) {
   const confirmed = state.repos.filter((r) => r.isEmpty === true);
   for (const id of emptySelection) if (!confirmed.some((r) => r.id === id)) emptySelection.delete(id);
 
-  const scanBtn = el('button', { type: 'button', class: 'btn-primary py-1.5' }, emptyScan.scanned ? 'Rescan' : 'Scan for empty repositories');
+  const scanBtn = el('button', { type: 'button', class: 'btn btn-primary py-1.5' }, emptyScan.scanned ? 'Rescan' : 'Scan for empty repositories');
   const status = el('p', { class: 'text-sm text-slate-400', role: 'status' });
   const barEl = el('div', { class: 'progress-bar w-0' });
   const progress = el('div', { class: 'progress', hidden: true, role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(candidates.length) }, barEl);
@@ -198,7 +198,7 @@ function mountEmpty(body) {
     emptyScan = { running: true, done: 0, total: targets.length, scanned: false };
     scanBtn.disabled = true; show(progress, true); progress.setAttribute('aria-valuemax', String(targets.length)); setStatus();
     const controller = new AbortController();
-    const cancel = el('button', { type: 'button', class: 'btn-ghost py-1.5', onClick: () => controller.abort() }, 'Cancel scan');
+    const cancel = el('button', { type: 'button', class: 'btn btn-ghost py-1.5', onClick: () => controller.abort() }, 'Cancel scan');
     scanBtn.after(cancel);
     try {
       bulkRunning = true;
@@ -260,7 +260,7 @@ function mountBranches(body) {
   const pickCount = el('span', { class: 'text-sm text-slate-300', 'aria-live': 'polite' });
   const daysInput = el('input', { class: 'input w-24 py-1.5', type: 'number', min: '1', max: '36500', step: '1', 'aria-label': 'Stale after days' });
   daysInput.value = String(staleDays);
-  const scanBtn = el('button', { type: 'button', class: 'btn-primary py-1.5' }, 'Scan branches');
+  const scanBtn = el('button', { type: 'button', class: 'btn btn-primary py-1.5' }, 'Scan branches');
   const renderList = () => {
     clear(list);
     const q = repoQuery.toLowerCase();
@@ -275,8 +275,8 @@ function mountBranches(body) {
   };
   const updatePick = () => { pickCount.textContent = `${formatNumber(branchRepoSelection.size)} selected`; scanBtn.disabled = branchRepoSelection.size === 0; };
   search.addEventListener('input', () => { repoQuery = search.value; renderList(); });
-  const selShown = el('button', { type: 'button', class: 'btn-ghost py-1.5', onClick: () => { const q = repoQuery.toLowerCase(); for (const r of repos) if (!q || r.full_name.toLowerCase().includes(q)) branchRepoSelection.add(r.id); renderList(); updatePick(); } }, 'Select shown');
-  const clearPick = el('button', { type: 'button', class: 'btn-ghost py-1.5', onClick: () => { branchRepoSelection.clear(); renderList(); updatePick(); } }, 'Clear');
+  const selShown = el('button', { type: 'button', class: 'btn btn-ghost py-1.5', onClick: () => { const q = repoQuery.toLowerCase(); for (const r of repos) if (!q || r.full_name.toLowerCase().includes(q)) branchRepoSelection.add(r.id); renderList(); updatePick(); } }, 'Select shown');
+  const clearPick = el('button', { type: 'button', class: 'btn btn-ghost py-1.5', onClick: () => { branchRepoSelection.clear(); renderList(); updatePick(); } }, 'Clear');
   renderList(); updatePick();
 
   const scanStatus = el('p', { class: 'text-sm text-slate-400', role: 'status' });
@@ -292,7 +292,7 @@ function mountBranches(body) {
     if (!targets.length) return;
     scanBtn.disabled = true; show(progress, true); progress.setAttribute('aria-valuemax', String(targets.length));
     const controller = new AbortController();
-    const cancel = el('button', { type: 'button', class: 'btn-ghost py-1.5', onClick: () => controller.abort() }, 'Cancel scan');
+    const cancel = el('button', { type: 'button', class: 'btn btn-ghost py-1.5', onClick: () => controller.abort() }, 'Cancel scan');
     scanBtn.after(cancel);
     branchResults = new Map(); branchSelection.clear();
     bulkRunning = true;
@@ -354,7 +354,7 @@ function renderResults(host) {
   }
 
   const count = el('span', { class: 'text-sm text-slate-300', 'aria-live': 'polite' });
-  const delBtn = el('button', { type: 'button', class: 'btn-danger py-1.5', onClick: () => deleteSelectedBranches(host) });
+  const delBtn = el('button', { type: 'button', class: 'btn btn-danger py-1.5', onClick: () => deleteSelectedBranches(host) });
   const updateBar = () => {
     const n = branchSelection.size;
     count.textContent = `${formatNumber(n)} ${plural(n, 'branch', 'branches')} selected`;
@@ -419,7 +419,7 @@ async function deleteSelectedBranches(host) {
     title: `Delete ${formatNumber(items.length)} ${plural(items.length, 'branch', 'branches')}`,
     message: 'The selected branches are deleted from GitHub. Open pull requests from these branches will be closed. Default and protected branches are excluded. This cannot be undone unless you still have the commits locally.',
     repos: items.map((i) => ({ full_name: i.label })),
-    confirmLabel: 'Delete branches', confirmClass: 'btn-danger',
+    confirmLabel: 'Delete branches', confirmClass: 'btn btn-danger',
   });
   if (!ok) return;
   await runWithPanel({

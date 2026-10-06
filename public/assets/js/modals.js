@@ -7,7 +7,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
  * Open a modal. `build({ close, setConfirmEnabled, confirmBtn })` returns body nodes.
  * Resolves with the value passed to `close(value)`; Esc / backdrop / Cancel resolve `null`.
  */
-export function openModal({ title, build, confirmLabel = 'Confirm', confirmClass = 'btn-primary', cancelLabel = 'Cancel', width = 'max-w-lg', danger = false }) {
+export function openModal({ title, build, confirmLabel = 'Confirm', confirmClass = 'btn btn-primary', cancelLabel = 'Cancel', width = 'max-w-lg', danger = false }) {
   const root = document.getElementById('modal-root');
   const previouslyFocused = document.activeElement;
   return new Promise((resolve) => {
@@ -22,7 +22,7 @@ export function openModal({ title, build, confirmLabel = 'Confirm', confirmClass
       resolve(value);
     };
     const confirmBtn = el('button', { type: 'button', class: confirmClass }, confirmLabel);
-    const cancelBtn = el('button', { type: 'button', class: 'btn-ghost', onClick: () => close(null) }, cancelLabel);
+    const cancelBtn = el('button', { type: 'button', class: 'btn btn-ghost', onClick: () => close(null) }, cancelLabel);
     const setConfirmEnabled = (v) => { confirmBtn.disabled = !v; };
     const titleId = `modal-title-${Math.random().toString(36).slice(2, 8)}`;
     const body = el('div', { class: 'space-y-4 text-sm text-slate-200' });
@@ -33,7 +33,7 @@ export function openModal({ title, build, confirmLabel = 'Confirm', confirmClass
       el('div', { class: 'mt-4' }, body),
       el('div', { class: 'mt-6 flex flex-wrap justify-end gap-2' }, cancelBtn, confirmBtn));
     const overlay = el('div', {
-      class: 'fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm',
+      class: 'fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4',
       onMousedown: (ev) => { if (ev.target === overlay) close(null); },
     }, dialog);
     const result = build({ close, setConfirmEnabled, confirmBtn, body });
@@ -79,7 +79,7 @@ export function confirmDelete(repos) {
   const phrase = `delete ${n} repositories`;
   return openModal({
     title: `Delete ${formatNumber(n)} ${n === 1 ? 'repository' : 'repositories'}`,
-    confirmLabel: 'Delete permanently', confirmClass: 'btn-danger', danger: true,
+    confirmLabel: 'Delete permanently', confirmClass: 'btn btn-danger', danger: true,
     build: ({ setConfirmEnabled, confirmBtn }) => {
       let phraseOk = false; let ack = false; let countdownDone = false;
       const baseLabel = 'Delete permanently';
@@ -110,7 +110,7 @@ export function confirmMakePublic(repos) {
   const phrase = 'make public';
   return openModal({
     title: `Make ${formatNumber(repos.length)} ${repos.length === 1 ? 'repository' : 'repositories'} public`,
-    confirmLabel: 'Make public', confirmClass: 'btn-warn', danger: true,
+    confirmLabel: 'Make public', confirmClass: 'btn btn-warn', danger: true,
     build: ({ setConfirmEnabled }) => {
       setConfirmEnabled(false);
       return [
@@ -127,7 +127,7 @@ export function confirmMakePublic(repos) {
 export function confirmTransfer(repos, newOwner) {
   return openModal({
     title: `Transfer ${formatNumber(repos.length)} ${repos.length === 1 ? 'repository' : 'repositories'} to ${newOwner}`,
-    confirmLabel: 'Start transfer', confirmClass: 'btn-warn', danger: true,
+    confirmLabel: 'Start transfer', confirmClass: 'btn btn-warn', danger: true,
     build: ({ setConfirmEnabled }) => {
       setConfirmEnabled(false);
       return [
@@ -140,7 +140,7 @@ export function confirmTransfer(repos, newOwner) {
 }
 
 /** Simple confirmation with count. Resolves true/null. */
-export function confirmSimple({ title, message, repos, confirmLabel = 'Confirm', confirmClass = 'btn-primary' }) {
+export function confirmSimple({ title, message, repos, confirmLabel = 'Confirm', confirmClass = 'btn btn-primary' }) {
   return openModal({
     title, confirmLabel, confirmClass,
     build: () => [el('p', { text: message }), repos ? repoList(repos) : null].filter(Boolean),
