@@ -45,3 +45,36 @@ const longTasks = await page.evaluate(() => window.__lt.map(Math.round));
 const rows = await page.evaluate(() => document.querySelectorAll('#repos-panel li[data-id]').length);
 console.log(JSON.stringify({ firstRowsMs: firstRows, allLoadedMs: allLoaded, rowsOnPage: rows, ms: m, longTasksDuringInteractions: longTasks, errors: errs }, null, 1));
 await browser.close();
+
+// Optional: PERF_BULK=N → mock bulk delete of N repos (≥1 s gap each), reports long tasks + list DOM mutations.
+if (process.env.PERF_BULK) {
+  const N = Number(process.env.PERF_BULK);
+  const p2 = await (await chromium.launch()).newPage({ viewport: { width: 1280, height: 900 } });
+  const e2 = [];
+  p2.on('pageerror', (e) => e2.push(e.message));
+  await p2.goto(`${BASE}/api/auth/login`);
+  await p2.waitForFunction(() => document.querySelector('[data-loading-banner]')?.hidden, null, { timeout: 60000 });
+  let picked = 0;
+  while (picked < N) { // select whole pages, then single rows for the remainder
+    const left = N - picked;
+    if (left >= 30) { await p2.click('#repos-panel .Box-header input[type=checkbox]'); picked += 30; }
+    else { for (let i = 0; i < left; i++) await p2.locator('#repos-panel li[data-id] input').nth(i).click(); picked += left; }
+    if (picked < N) await p2.click('.Pagination button[aria-label="Next page"]');
+  }
+  await p2.click('button[aria-label="Bulk actions for selected repositories"]');
+  await p2.click('text=Delete repositories…');
+  await p2.fill('.Overlay input[type=text]', `delete ${N} repositories`);
+  await p2.check('.Overlay input[type=checkbox]');
+  await p2.waitForTimeout(3300);
+  await p2.evaluate(() => {
+    window.__lt = []; window.__mut = 0;
+    new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__lt.push(e.duration); }).observe({ type: 'longtask' });
+    new MutationObserver((ms) => { window.__mut += ms.length; window.__renders = (window.__renders || 0) + 1; }).observe(document.querySelector('ul[aria-label="Repositories"]'), { childList: true });
+  });
+  const s = Date.now();
+  await p2.click('.Overlay-footer .btn-danger-solid');
+  await p2.waitForFunction(() => /(Finished|Cancelled) –/.test(document.querySelector('#bulk-panel')?.textContent || ''), null, { timeout: (N + 30) * 1500 });
+  const r = await p2.evaluate(() => ({ longTasks: window.__lt.map(Math.round), listChildListMutations: window.__mut, mutationCallbacks: window.__renders }));
+  console.log(JSON.stringify({ bulkDelete: N, seconds: Math.round((Date.now() - s) / 1000), ...r, errors: e2 }));
+}
+process.exit(0);

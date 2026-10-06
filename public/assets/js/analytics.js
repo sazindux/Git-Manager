@@ -111,7 +111,7 @@ function barList(title, items, { ariaLabel, note }) {
         el('span', { class: 'ml-auto shrink-0 tabular-nums text-xs text-fg-muted', text: it.display })),
       el('div', { class: 'meter meter--thin', 'aria-hidden': 'true' }, fill)));
   }
-  return el('section', { class: 'Box min-w-0', 'aria-label': title },
+  return el('section', { class: 'Box min-w-0 cv-auto', 'aria-label': title },
     el('div', { class: 'Box-header' }, el('h2', { class: 'Box-title', text: title })),
     ul, note ? el('div', { class: 'Box-footer py-2 text-xs text-fg-muted', text: note }) : null);
 }
@@ -181,5 +181,13 @@ export function initAnalytics(section) {
     raf = requestAnimationFrame(() => { raf = 0; if (dirty && state.activeTab === 'analytics') render(); });
   });
   on('tab', (tab) => { if (tab === 'analytics' && dirty) render(); });
+  // Idle pre-render while hidden (after the list is fully loaded) so the first switch is cheap.
+  const idle = globalThis.requestIdleCallback || ((fn) => setTimeout(fn, 200));
+  let prerendered = false; // once, after the initial load – never during bulk runs
+  on('repos', () => {
+    if (prerendered || !state.reposLoaded) return;
+    prerendered = true;
+    idle(() => { if (dirty && state.activeTab !== 'analytics') render(); }, { timeout: 2000 });
+  });
   if (state.activeTab === 'analytics') render();
 }

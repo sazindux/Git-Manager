@@ -275,13 +275,9 @@
   .seg-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0; padding: 0; list-style: none; }
   .meter { display: block; height: 8px; overflow: hidden; border-radius: 6px; background-color: var(--border-muted); }
   .meter--thin { height: 4px; }
+  .cv-auto { content-visibility: auto; contain-intrinsic-size: auto 540px; }
   .meter-fill { display: block; height: 100%; border-radius: inherit; }
 
-  /* ---------- Segmented control ---------- */
-  .SegmentedControl { display: inline-flex; padding: 2px; gap: 2px; background-color: var(--btn-bg); border: 1px solid var(--border-default); border-radius: var(--radius); max-width: 100%; overflow-x: auto; }
-  .SegmentedControl-item { height: 28px; padding: 0 12px; font-size: 14px; color: var(--fg-default); background: transparent; border: 1px solid transparent; border-radius: 5px; cursor: pointer; white-space: nowrap; }
-  .SegmentedControl-item:hover { background-color: var(--menu-hover); }
-  .SegmentedControl-item[aria-selected='true'] { font-weight: 600; background-color: var(--canvas-default); border-color: var(--border-default); }
 
   /* ---------- Pagination ---------- */
   .Pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; margin: 16px 0; }
@@ -346,15 +342,4 @@
   .spinner { animation: gm-spin 1s linear infinite; }
   @keyframes gm-spin { to { transform: rotate(360deg); } }
 
-  /* ---------- Legacy aliases (pre-U1 markup; removed task by task) ---------- */
-  .glass, .glass-strong { @apply Box; }
-  .btn-ghost { @apply btn; }
-  .btn-warn { @apply btn; color: var(--attention-fg); }
-  .input { @apply form-control; width: 100%; }
-  .badge { @apply Label; }
-  .badge-ok { @apply Label Label--success; }
-  .badge-warn { @apply Label Label--attention; }
-  .badge-danger { @apply Label Label--danger; }
-  .progress { @apply Progress; width: 100%; }
-  .progress-bar { @apply Progress-item; }
 }

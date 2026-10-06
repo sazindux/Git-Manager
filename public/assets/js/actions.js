@@ -3,7 +3,7 @@ import { on, state, hasScope, selectedRepos, updateRepo, removeRepos, clearSelec
 import { patch, del, put, post } from './api.js';
 import { writeOptions } from './bulk.js';
 import { confirmDelete, confirmMakePublic, confirmTransfer, confirmSimple, promptText, openModal } from './modals.js';
-import { el, formatNumber, $$ } from './ui.js';
+import { el, formatNumber } from './ui.js';
 import { success, info } from './toast.js';
 
 const OWNER_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
@@ -14,23 +14,6 @@ const plural = (n) => (n === 1 ? 'repository' : 'repositories');
 
 export function initActions(bulkPanel) {
   on('bulk-action', ({ type }) => handle(type, bulkPanel));
-  on('user', updateScopeState);
-  on('repos', updateScopeState);
-  on('selection', updateScopeState);
-  updateScopeState();
-}
-
-function updateScopeState() {
-  const canDelete = hasScope('delete_repo');
-  for (const btn of $$('[data-action="delete"]')) {
-    btn.disabled = !canDelete;
-    btn.title = canDelete ? 'Permanently delete the selected repositories' : 'Missing OAuth scope delete_repo – sign out and in again to grant it';
-  }
-  const canWrite = hasScope('repo');
-  for (const btn of $$('[data-action]:not([data-action="delete"])')) {
-    btn.disabled = !canWrite;
-    btn.title = canWrite ? '' : 'Missing OAuth scope repo';
-  }
 }
 
 async function handle(type, bulkPanel) {

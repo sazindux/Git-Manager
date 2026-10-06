@@ -13,7 +13,7 @@ import { createMenu } from './menu.js';
 const repoPath = (r) => `/api/repos/${encodeURIComponent(r.owner.login)}/${encodeURIComponent(r.name)}`;
 const plural = (n, one, many) => (n === 1 ? one : many);
 const DEFAULT_STALE_DAYS = 90;
-const CHUNK = 100;
+const CHUNK = 50;
 
 // UI-side mirror of lib/branches.js: default/protected branches are never deletable.
 export function isBranchDeletable(b) {
@@ -92,6 +92,14 @@ export function initCleanup(section) {
     raf = requestAnimationFrame(() => { raf = 0; if (dirty && !bulkRunning && state.activeTab === 'cleanup') remount(); });
   });
   on('tab', (tab) => { if (tab === 'cleanup' && dirty && !bulkRunning) remount(); });
+  // Idle pre-render while hidden so the first tab switch is cheap (only when the list is fully loaded).
+  const idle = globalThis.requestIdleCallback || ((fn) => setTimeout(fn, 200));
+  let prerendered = false; // once, after the initial load – never during bulk runs
+  on('repos', () => {
+    if (prerendered || !state.reposLoaded) return;
+    prerendered = true;
+    idle(() => { if (dirty && !bulkRunning && state.activeTab !== 'cleanup') remount(); }, { timeout: 2000 });
+  });
 }
 
 async function runWithPanel(spec) {

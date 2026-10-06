@@ -13,8 +13,6 @@ export default {
         danger: { DEFAULT: '#f85149', emphasis: '#da3633' },
         attention: '#d29922',
         done: '#a371f7',
-        // legacy alias (pre-U1 markup), removed in U6
-        ink: { 950: '#010409', 900: '#0d1117', 800: '#161b22', 700: '#21262d' },
       },
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', '"Noto Sans"', 'Helvetica', 'Arial', 'sans-serif'],
