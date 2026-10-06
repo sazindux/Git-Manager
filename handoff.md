@@ -1,5 +1,5 @@
 # HANDOFF — UI UPGRADE PHASE (U0–U6)
-Updated: 2026-10-06 · Last task touched: U4 · Work directly on `main` (Vercel auto-deploys on push)
+Updated: 2026-10-06 · Last task touched: U5 · Work directly on `main` (Vercel auto-deploys on push)
 
 ## Task status
 | ID | Task | Status | Commit |
@@ -22,18 +22,18 @@ Updated: 2026-10-06 · Last task touched: U4 · Work directly on `main` (Vercel 
 | U2 | Repositories list + performance core | done | 5be274f |
 | U3 | Dialogs, bulk panel, toasts | done | 1722d17 |
 | U4 | Cleanup tab | done | 4ebe215 (+ follow-up) |
-| U5 | Analytics tab | pending | |
+| U5 | Analytics tab | done | 4327733 |
 | U6 | Performance pass, polish & final QA | pending | |
 
 ## Current / next action
 UI phase (frontend only: `public/`, `src/styles.css`, `tailwind.config.js`, `scripts/mock-github.js`, tests).
-Next: **U5** — restyle `analytics.js` (160 lines; SVG donuts + legacy classes): summary Box tiles (24px/600 numbers),
-GitHub segmented language bar (`langColor`, widths via `el.style.width`) + dot legend, visibility & fork/source
-meters, Top starred / Largest / Oldest untouched Box lists with thin bars. Lazy like cleanup (dirty flag + `tab`
-event + rAF coalescing); memoize `computeAnalytics` per `state.repos` identity/length version. Numbers must match.
-U4 verified (Playwright, 1500 mock repos, 1280 + 390): tab→cleanup 72–85 ms (was 128–205; Forks list renders in
-chunks of 100 with "Show N more"), empty scan → 115 confirmed + Box list, branch scan → default/protected rows show
-lock icon + disabled checkbox (2/2), 0 console/CSP errors.
+Next: **U6** — perf pass + polish + final QA (see prompt §8 U6): profile 1500-repo mock incl. a 100-item mock bulk
+delete (long tasks, re-render counts), remove legacy aliases at bottom of `src/styles.css` (`.glass .input .badge*
+.btn-ghost .btn-warn .progress*`) + Tailwind `ink-*` after grepping usages, drop `updateScopeState` dead code in
+actions.js, security grep, README look/entry wording, then mark "UI UPGRADE COMPLETE" with numbers.
+U5 verified (Playwright, 1500 mock): tab→analytics 64–96 ms first render, 7–12 ms when unchanged (memo + not dirty);
+tiles 1,500 / 703,500 / 58 GB / 5,997 / 300 / 88; 0 console errors at 1280/390. computeAnalytics unchanged.
+U4 verified: tab→cleanup 72–85 ms (was 128–205), empty scan + branch scan OK, default/protected rows locked.
 U3 verified (Playwright, mock): delete modal focus-in, button disabled until phrase + checkbox + 3 s countdown, Tab
 trap holds, run → Box panel (check/x icons, red bar on failure, Retry/Download), flash toast; Make-public modal Esc
 closes and focus returns to the `Actions` button. Destructive dialogs use `role=alertdialog`.
@@ -97,7 +97,7 @@ new components in `src/styles.css` so old markup still renders; delete them as e
   - `public/assets/js/toast.js` → `toast(msg, kind)`, `success/error/info`; renders `.flash.flash-toast` + icon + dismiss button.
   - `public/assets/js/main.js` → bootstrap (`/api/me`), views, tabs, logout, `?error=` toasts; dynamically imports `dashboard.js`.
   - `public/assets/js/dashboard.js` → `initDashboard()`: creates `bulkPanel.instance = new BulkPanel($('#bulk-panel'))` (exported), mounts `initGrid(#repos-panel)`, `initActions(bulkPanel)`, `initCleanup(#tab-cleanup)`, `initAnalytics(#tab-analytics)`.
-  - `public/assets/js/analytics.js` → pure `computeAnalytics(repos, now)` → `{totals, languages, byStars, bySize, oldest}`, `topLanguages(langs, max)` (groups tail into Other), `renderAnalytics(host, repos)` (SVG donuts via `svg()`, CSS bars, stat cards), `initAnalytics(section)` re-renders on `repos`.
+  - `public/assets/js/analytics.js` (U5) → pure `computeAnalytics`, `topLanguages` (unchanged); `renderAnalytics(host, repos)` = Insights page: 6 `.stat-tile` Boxes, Languages card with `.seg-bar` (linguist colors, top 12 + Other) + `.seg-legend`, Visibility / Sources-forks-archive `.meter`s, Top starred / Largest / Oldest untouched Box lists with 4px bars in language color. `analyticsFor()` memoizes per `version` (bumped on `repos`) + array identity/length. `initAnalytics` lazy (dirty + rAF + `tab`).
   - `public/assets/js/cleanup.js` (U4) → `initCleanup(section)`: own `BulkPanel` + sub `UnderlineNav--sub` tabs Forks/Empty/Branches with Counters (WAI-ARIA tabs). Lazy: `repos` → dirty; remount only if tab visible (rAF-coalesced) or on `tab` event; skipped during own bulk runs. `repoBox()` = Box with select-all header + red `Delete selected`, delegated `change`, rows rendered in chunks of 100 (`CHUNK`). Branch picker = Box with search header (debounced 120 ms, 300 shown max), branch results = Box rows (`branchRow`: git-branch/lock icon, `.branch-name`, Default/Protected/Merged/Stale Labels, ahead/behind, relative age) with `Merged or stale ▾` menu. Module-level selection Sets + `branchResults` survive re-renders. Empty scan sets `repo.isEmpty` in place then emits `repos`. Branch delete URL = `${repoPath}/branches/${segments encoded}`. UI mirror `isBranchDeletable(b)`.
   - `public/assets/js/actions.js` → listens `bulk-action`; `runVisibility/runArchive/runDelete/runTopics/runTransfer` (modal → `bulkPanel.run` with `writeOptions()` → `updateRepo/removeRepos`); `updateScopeState()` disables `[data-action]` buttons lacking scope (`delete_repo`/`repo`) with explanatory title; `repoPath(r)` helper.
   - `public/assets/js/bulk.js` → pure `runBulk(items, fn, {concurrency, minGapMs, signal, onProgress, now, sleep})` → `{results:[{item,key,status,value,error,errorCode,attempts}], cancelled}`; `writeOptions()` (1 worker, 1000 ms gap), `readOptions()` (4 workers); `BulkPanel.run({title, action, items, perItemFn, options, onItemOk, onFinish})` renders a Box (header: title, Counter, status, Cancel/Retry failed/Download log/close; 8px `.Progress` green when ok, red on failure; per-item rows with spinner/check/x icon, patched only on status change); `buildLog`, `downloadJson`, `labelOf`.
