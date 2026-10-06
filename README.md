@@ -9,6 +9,8 @@ repositories (keyed rows, event delegation, rAF-batched renders, lazy hidden tab
 100% serverless and stateless: Vercel static hosting + one Hono Node function. No database, no KV,
 no analytics, no third-party services besides GitHub.
 
+Visit: https://gitmanage.vercel.app/
+
 ## Privacy model
 
 - You sign in with a **GitHub OAuth App** (scopes `repo`, `delete_repo`, `read:org`).
