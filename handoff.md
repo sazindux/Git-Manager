@@ -1,5 +1,5 @@
 # HANDOFF — UI UPGRADE PHASE (U0–U6)
-Updated: 2026-10-06 · Last task touched: U1 · Work directly on `main` (Vercel auto-deploys on push)
+Updated: 2026-10-06 · Last task touched: U2 · Work directly on `main` (Vercel auto-deploys on push)
 
 ## Task status
 | ID | Task | Status | Commit |
@@ -19,7 +19,7 @@ Updated: 2026-10-06 · Last task touched: U1 · Work directly on `main` (Vercel 
 | T12 | Fix /api 404 on Vercel | done (user: backend live) | cc0daa5 |
 | U0 | Audit, Primer tokens & CSS foundation | done | 9c74392 |
 | U1 | App shell & landing page | done | f9fce6f |
-| U2 | Repositories list + performance core | pending | |
+| U2 | Repositories list + performance core | done | 5be274f |
 | U3 | Dialogs, bulk panel, toasts | pending | |
 | U4 | Cleanup tab | pending | |
 | U5 | Analytics tab | pending | |
@@ -27,12 +27,14 @@ Updated: 2026-10-06 · Last task touched: U1 · Work directly on `main` (Vercel 
 
 ## Current / next action
 UI phase (frontend only: `public/`, `src/styles.css`, `tailwind.config.js`, `scripts/mock-github.js`, tests).
-Next: **U2** — rebuild `grid.js` rendering (keep `loadAllRepos`, `applyFilters`, `affiliationOf`, `isLikelyEmpty`
-exports/semantics): filter row (search w/ icon + `createMenu` Type/Language/Sort/Affiliation + Reload), results line,
-Box list whose header becomes bulk bar (`Actions ▾` → emit existing `bulk-action` events; check `actions.js`
-`updateScopeState()` which disables `[data-action]` buttons — menu items need equivalent disabling), 30/page pager,
-keyed row cache + patching, delegation, rAF scheduler, precomputed haystack/sort keys, progressive first page.
-QA: `GM_MOCK_REPOS=1500 PORT=3077 npm run dev:mock` + `PLAYWRIGHT_BROWSERS_PATH=0 QA_MENU=1 node scripts/qa.mjs /tmp/x`.
+Next: **U3** — restyle `modals.js` (Primer dialog: #161b22 bg, 12px radius, header+close icon, right footer,
+backdrop rgba(1,4,9,.8) no blur, red `flash` on destructive; keep typed phrase + 3 s countdown + focus trap),
+`BulkPanel` render in `bulk.js` (Box, 8px `.Progress`, per-item status icons, Cancel/Retry/Download) — do NOT touch
+`runBulk`; `toast.js` → `.flash .flash-toast` + icon. Then U4 cleanup (lazy when hidden), U5 analytics.
+U2 perf (Playwright, 1500 mock repos, `scripts/perf.mjs`, sync handler → next rAF): first rows 0.63 s, all 15 pages 1.9 s;
+search 9 ms, toggle one 5, select page 11, select all 1500 matching 4, clear 3, next page 41 (30 new rows), tab→repos 12.
+Remaining long tasks are from Cleanup (128 ms on switch) and Analytics (68 ms) re-rendering → fix in U4/U5.
+QA: `GM_MOCK_REPOS=1500 PORT=3077 npm run dev:mock` + `PLAYWRIGHT_BROWSERS_PATH=0 node scripts/qa.mjs /tmp/x` / `scripts/perf.mjs`.
 U0 baseline audit (lag sources, confirmed in code): body had 3 radial gradients + `background-attachment: fixed`;
 `.glass/.glass-strong`, sticky header and grid selection bar used `backdrop-filter`; grid `renderRows()` does
 `clear(tbody)` + rebuilds every cell on each `repos`/`selection` event; per-row listeners; analytics + cleanup
@@ -78,6 +80,8 @@ new components in `src/styles.css` so old markup still renders; delete them as e
   - `public/assets/js/langcolors.js` → `LANG_COLORS`, `langColor(name)` (linguist or hashed hsl), `langDot(name)` (CSSOM bg).
   - `public/assets/js/config.js` → `APP_NAME = 'Git Manager'` (applied to title/header/landing by `main.js applyBranding()`).
   - `public/assets/js/main.js` (U1) → `applyBranding`, profile `createMenu` (login, scopes, GitHub profile, Sign out), `renderRate` (Label → attention <20%, danger <4%), `#count-repos` Counter on `repos`, WAI-ARIA tabs (`role=tab`, `aria-selected`, roving tabindex, ←/→/Home/End).
+  - `scripts/perf.mjs` → dev-only Playwright timing probe (load, search, toggle, select page/all, pager, tab switches, long tasks).
+  - `ui.js` adds `relativeTime(iso)` ("3 days ago" / "on Mar 5, 2024").
   - `scripts/qa.mjs` → dev-only Playwright screenshots (landing + 3 tabs @1280/390, optional profile menu) + console error count. Playwright is installed with `--no-save` (never in package.json); needs `sudo npx playwright install-deps chromium` once per sandbox.
   - `public/assets/js/menu.js` → `createMenu({label, icon, buttonClass, align, items, ariaLabel, selectable, title, buttonContent})` → `{root, button, menu, setLabel, refresh, open, close}`; items `{label, icon, danger, checked, disabled, meta, dot, multi, keepOpen, onSelect}` | `{divider}` | `{header}` | `{text}`; Arrow/Home/End/Esc/Tab, click-outside, focus return; one menu open at a time.
   - `public/index.html` → views `#view-loading/#view-landing/#view-dashboard`, header (avatar `#user-avatar`, `#user-login`, `#rate-badge`, `#btn-logout`), tab buttons `[data-tab]`, sections `#tab-repos` (`#repos-panel`), `#tab-cleanup`, `#tab-analytics`, `#toasts`, `#modal-root`. Script: `/assets/js/main.js` (module).
@@ -92,7 +96,7 @@ new components in `src/styles.css` so old markup still renders; delete them as e
   - `public/assets/js/actions.js` → listens `bulk-action`; `runVisibility/runArchive/runDelete/runTopics/runTransfer` (modal → `bulkPanel.run` with `writeOptions()` → `updateRepo/removeRepos`); `updateScopeState()` disables `[data-action]` buttons lacking scope (`delete_repo`/`repo`) with explanatory title; `repoPath(r)` helper.
   - `public/assets/js/bulk.js` → pure `runBulk(items, fn, {concurrency, minGapMs, signal, onProgress, now, sleep})` → `{results:[{item,key,status,value,error,errorCode,attempts}], cancelled}`; `writeOptions()` (1 worker, 1000 ms gap), `readOptions()` (4 workers); `BulkPanel.run({title, action, items, perItemFn, options, onItemOk, onFinish})` renders progress/cancel/retry/log; `buildLog`, `downloadJson`, `labelOf`.
   - `public/assets/js/modals.js` → `openModal({title, build, confirmLabel, confirmClass, danger})` (focus trap, Esc/backdrop close → null), `confirmDelete(repos)`, `confirmMakePublic(repos)`, `confirmTransfer(repos, newOwner)`, `confirmSimple({title, message, repos, confirmLabel, confirmClass})`, `promptText({title, label, validate, hint})` → string|null.
-  - `public/assets/js/grid.js` → `loadAllRepos(onProgress)` (pages until `hasMore` false → `setRepos`), pure `applyFilters(repos, filters, login)`, `affiliationOf`, `isLikelyEmpty` (uses `repo.isEmpty` if set by cleanup scan, else size===0), `initGrid(panel)` (toolbar, selection bar with action buttons emitting `bulk-action`, table 50/page, shift-click, select-all-filtered, Reload). Listens to `repos`/`selection` events so later mutations re-render automatically.
+  - `public/assets/js/grid.js` (U2) → `loadAllRepos(onProgress)` (onProgress now also gets `items` so far), pure `applyFilters` (same semantics; WeakMap-cached lowercased haystack, decorate-sort; new sort key `updated`), `affiliationOf`, `isLikelyEmpty`. `initGrid(panel)`: filter row (search + `createMenu` Type/Language(dots+counts)/Owner/Sort(+direction) + Reload icon), results line + Clear filter, loading `flash` (`[data-loading-banner]`), Box list; header = select-page checkbox + count, turns into bulk bar (`N selected`, Select all M matching, Clear selection, `Actions ▾` emitting `bulk-action` with scope/loading-based disabling). Rows: `Map<id,{li,chk,body,sig}>`, body rebuilt only when `rowSig` changes; one delegated click listener on `ul` (shift-click range) + pager; all renders via rAF `schedule(kind)` with dirty flags (`data/langs/list/sel`), skipped while tab hidden and flushed on `tab` event. 30/page GitHub pager.
   - `scripts/dev-server.js` → Node static+API server applying vercel.json headers; `GM_MOCK=1` loads `scripts/mock-github.js` (in-memory fake GitHub; `GM_MOCK_REPOS` default 240, e.g. 1500; varied names/descriptions/topics/20 languages/forks/archived/empty/templates). `npm run dev:mock` (scripts/dev.sh) = zero-config local run. In mock mode `/api/auth/login` redirects straight to the callback (no GitHub hop), so opening `/api/auth/login` logs you in.
   - `test/app.test.js` → smoke tests using `app.request()`; `test/grid.test.js` → filter/sort tests; `test/bulk.test.js` → runner sequencing/gap/cancel/rate-retry with a virtual clock (both stub `globalThis.document`); `test/mutations.test.js` → PATCH/DELETE/topics routes + CSRF (helper `authed(path, {method, json})` adds CSRF+Origin); `test/cleanup.test.js` → classifier + empty-check/branches/delete-branch routes; `test/analytics.test.js` → computeAnalytics/topLanguages.
 - Implemented endpoints: `GET /api/health`, `GET /api/auth/login`, `GET /api/auth/callback`, `POST /api/auth/logout`, `GET /api/me`, `GET /api/repos?page=N` → `{page, items, hasMore, rate}`, `PATCH /api/repos/:o/:r` (`{private?, archived?}` → `{repo, rate}`), `DELETE /api/repos/:o/:r` (204), `PUT /api/repos/:o/:r/topics` (`{mode, names}` → `{topics, rate}`), `POST /api/repos/:o/:r/transfer` (`{new_owner, new_name?}` → 202 `{pending, repo, rate}`), `GET /api/repos/:o/:r/empty-check` → `{empty, rate}`, `GET /api/repos/:o/:r/branches?stale_days=N` → `{defaultBranch, staleDays, branches:[{name, protected, isDefault, aheadBy, behindBy, lastCommitDate, merged, stale, ageDays, deletable}], rate}`, `DELETE /api/repos/:o/:r/branches/:branch{.+}` (204; 409 `protected_branch`).
@@ -104,6 +108,7 @@ new components in `src/styles.css` so old markup still renders; delete them as e
 ## Decisions & deviations from the prompt
 - U0: work committed straight to `main` (UI-phase instruction), not the old PR branch. Test count is 68 (not 64; T12 added 4).
 - U0: Playwright is not installed in the sandbox (no npm/pip package); only the remote console-capture tool is available → mock mode verified 0 console errors on 1500 repos; timings unmeasured so far. U1: installed Playwright locally via `npm i --no-save` + system deps → screenshots work; only expected console error is the `/api/me` 401 on the logged-out landing.
+- U2: Actions menu is disabled while pages are still streaming in (avoids acting on a partial list). Default sort is now "Last updated" (`updated_at`), like GitHub. Owner/affiliation is a 4th `Owner ▾` menu; "Empty only" moved into `Type ▾ → Empty`. `actions.js updateScopeState()` now finds no `[data-action]` buttons (harmless; menu checks scopes itself) — remove in U6.
 - U1: removed the header `#user-login` text and `#btn-logout` button; login + Sign out now live in the avatar dropdown (spec). Landing has no glass card; the GitHub mark appears only inside the sign-in button.
 - U0: the sed pass added base `btn` to every legacy `btn-*` usage because new variants are modifiers (Primer style), not standalone.
 - T12: chose B, not Hono zero-config A. Live shallow routes prove a deployed API function while nested
