@@ -266,6 +266,29 @@
   .Blankslate-title { font-size: 20px; font-weight: 600; margin: 0; }
   .Blankslate-desc { color: var(--fg-muted); margin: 0; max-width: 480px; }
 
+  /* ---------- Dialog (Primer Overlay) ---------- */
+  .Overlay-backdrop {
+    position: fixed; inset: 0; z-index: 45; display: flex; align-items: center; justify-content: center;
+    padding: 16px; background-color: var(--backdrop);
+  }
+  .Overlay {
+    display: flex; flex-direction: column; width: 100%; max-width: 480px; max-height: calc(100vh - 32px);
+    background-color: var(--canvas-subtle); border: 1px solid var(--border-default); border-radius: 12px;
+    box-shadow: var(--overlay-shadow); color: var(--fg-default);
+  }
+  .Overlay--wide { max-width: 640px; }
+  .Overlay-header { display: flex; align-items: flex-start; gap: 8px; padding: 16px; border-bottom: 1px solid var(--border-default); }
+  .Overlay-title { flex: 1; margin: 0; font-size: 14px; font-weight: 600; line-height: 32px; overflow-wrap: anywhere; }
+  .Overlay-body { padding: 16px; overflow-y: auto; font-size: 14px; }
+  .Overlay-body > * + * { margin-top: 16px; }
+  .Overlay-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 16px; border-top: 1px solid var(--border-default); }
+  .Overlay-body > .flash + .repo-chip-list { margin-top: 8px; }
+  .repo-chip-list { max-height: 192px; overflow-y: auto; margin: 0; padding: 4px 0; list-style: none;
+    background-color: var(--canvas-default); border: 1px solid var(--border-default); border-radius: var(--radius);
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+  .repo-chip-list li { padding: 2px 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  code.phrase { padding: 1px 6px; font-size: 12px; background-color: var(--counter-bg); border-radius: var(--radius); user-select: all; }
+
   /* ---------- Progress, avatar, misc ---------- */
   .Progress { display: flex; height: 8px; overflow: hidden; background-color: var(--border-default); border-radius: 6px; }
   .Progress-item { height: 100%; background-color: var(--accent-fg); }

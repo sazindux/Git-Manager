@@ -111,12 +111,12 @@ async function runTopics(bulkPanel, repos) {
     title: `Edit topics on ${formatNumber(repos.length)} ${plural(repos.length)}`,
     confirmLabel: 'Apply topics',
     build: ({ setConfirmEnabled, confirmBtn }) => {
-      const modeSel = el('select', { class: 'input', 'aria-label': 'Mode' },
+      const modeSel = el('select', { class: 'form-control form-control-block', 'aria-label': 'Mode' },
         el('option', { value: 'add', text: 'Add topics (keep existing)' }),
         el('option', { value: 'remove', text: 'Remove topics' }),
         el('option', { value: 'replace', text: 'Replace all topics' }));
-      const input = el('input', { class: 'input font-mono', type: 'text', placeholder: 'web, cli, my-tool', autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Topics' });
-      const err = el('p', { class: 'text-xs text-rose-300', 'aria-live': 'polite' });
+      const input = el('input', { class: 'form-control form-control-block font-mono', type: 'text', placeholder: 'web, cli, my-tool', autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Topics' });
+      const err = el('p', { class: 'note text-danger', 'aria-live': 'polite' });
       const check = () => {
         const names = parseTopics(input.value);
         const bad = names.find((t) => !TOPIC_RE.test(t));
@@ -130,9 +130,9 @@ async function runTopics(bulkPanel, repos) {
       };
       input.addEventListener('input', check); modeSel.addEventListener('change', check); check();
       return [
-        el('label', { class: 'block space-y-1' }, el('span', { class: 'text-slate-300', text: 'Mode' }), modeSel),
-        el('label', { class: 'block space-y-1' }, el('span', { class: 'text-slate-300', text: 'Topics (comma or space separated)' }), input),
-        el('p', { class: 'text-xs text-slate-400', text: 'Replace with an empty list clears all topics. GitHub allows at most 20 topics per repository.' }),
+        el('label', { class: 'block' }, el('span', { class: 'form-label', text: 'Mode' }), modeSel),
+        el('label', { class: 'block' }, el('span', { class: 'form-label', text: 'Topics (comma or space separated)' }), input),
+        el('p', { class: 'note', text: 'Replace with an empty list clears all topics. GitHub allows at most 20 topics per repository.' }),
         err,
       ];
     },

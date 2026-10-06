@@ -1,6 +1,7 @@
 // Generic bulk runner. Core (`runBulk`) is DOM-free so it can be unit tested; `BulkPanel` renders progress.
 import { el, clear, show, sleep, formatNumber } from './ui.js';
 import { describeError } from './api.js';
+import { icon, spinner } from './icons.js';
 
 export const READ_CONCURRENCY = 4;
 export const WRITE_GAP_MS = 1000; // GitHub guidance: ≥1 s between mutating requests, strictly sequential.
@@ -108,11 +109,14 @@ export function labelOf(item) {
 
 // --- UI panel -------------------------------------------------------------------------------
 
-const STATUS_CLASS = {
-  queued: 'text-slate-500', running: 'text-sky-300', waiting: 'text-amber-300',
-  ok: 'text-emerald-300', failed: 'text-rose-300', cancelled: 'text-slate-400',
-};
-const STATUS_TEXT = { queued: 'queued', running: 'running…', waiting: 'waiting', ok: 'ok', failed: 'failed', cancelled: 'cancelled' };
+const STATUS_TEXT = { queued: 'Queued', running: 'Running…', waiting: 'Waiting', ok: 'Done', failed: 'Failed', cancelled: 'Cancelled' };
+const STATUS_ICON = { queued: ['dot-fill', 'text-muted'], waiting: ['alert', 'text-attention'], ok: ['check', 'text-success'], failed: ['x', 'text-danger'], cancelled: ['x', 'text-muted'] };
+
+function statusIcon(status) {
+  if (status === 'running') return spinner();
+  const [name, cls] = STATUS_ICON[status] || STATUS_ICON.queued;
+  return icon(name, { class: cls, label: STATUS_TEXT[status] });
+}
 
 /**
  * Progress panel. `runAction({ title, action, items, perItemFn, options, onItemOk, onFinish })` renders into `host`.
@@ -131,31 +135,35 @@ export class BulkPanel {
     const { signal } = this.controller;
     const startedAt = Date.now();
 
-    const bar = el('div', { class: 'progress-bar w-0' });
-    const counter = el('span', { class: 'text-sm tabular-nums text-slate-300', text: `0 / ${formatNumber(items.length)}` });
-    const status = el('span', { class: 'text-sm text-slate-400', text: 'Running…' });
-    const cancelBtn = el('button', { type: 'button', class: 'btn btn-ghost py-1.5', onClick: () => { this.controller?.abort(); status.textContent = 'Cancelling after current item…'; cancelBtn.disabled = true; } }, 'Cancel');
-    const retryBtn = el('button', { type: 'button', class: 'btn btn-ghost py-1.5' }, 'Retry failed');
-    const logBtn = el('button', { type: 'button', class: 'btn btn-ghost py-1.5' }, 'Download log (JSON)');
-    const closeBtn = el('button', { type: 'button', class: 'btn btn-ghost py-1.5', 'aria-label': 'Close progress panel', onClick: () => { clear(host); show(host, false); } }, 'Close');
+    const bar = el('span', { class: 'Progress-item' });
+    bar.style.width = '0%';
+    const counter = el('span', { class: 'Counter tabular-nums', text: `0 / ${formatNumber(items.length)}` });
+    const status = el('span', { class: 'text-sm text-fg-muted', text: 'Running…' });
+    const cancelBtn = el('button', { type: 'button', class: 'btn btn-sm', onClick: () => { this.controller?.abort(); status.textContent = 'Cancelling after current item…'; cancelBtn.disabled = true; } }, icon('x'), 'Cancel');
+    const retryBtn = el('button', { type: 'button', class: 'btn btn-sm' }, icon('sync'), 'Retry failed');
+    const logBtn = el('button', { type: 'button', class: 'btn btn-sm' }, icon('download'), 'Download log');
+    const closeBtn = el('button', { type: 'button', class: 'btn btn-sm btn-octicon', 'aria-label': 'Close progress panel', title: 'Close', onClick: () => { clear(host); show(host, false); } }, icon('x'));
     show(retryBtn, false); show(logBtn, false); show(closeBtn, false);
-    const list = el('ul', { class: 'max-h-64 divide-y divide-white/5 overflow-y-auto text-sm', 'aria-label': 'Per-item results' });
+    const list = el('ul', { class: 'm-0 max-h-64 overflow-y-auto p-0 text-sm', 'aria-label': 'Per-item results' });
     const rows = new Map();
+    const frag = document.createDocumentFragment();
     for (const it of items) {
-      const st = el('span', { class: `${STATUS_CLASS.queued} w-20 shrink-0 text-xs`, text: STATUS_TEXT.queued });
-      const err = el('span', { class: 'text-xs text-rose-200/80 break-words' });
-      const li = el('li', { class: 'flex items-start gap-3 px-3 py-1.5' },
-        st, el('span', { class: 'min-w-0 flex-1 truncate', text: labelOf(it), title: labelOf(it) }), err);
-      rows.set(it, { li, st, err });
-      list.append(li);
+      const st = el('span', { class: 'inline-flex w-4 shrink-0 justify-center pt-0.5' }, statusIcon('queued'));
+      const err = el('span', { class: 'text-xs text-danger break-words' });
+      const li = el('li', { class: 'flex items-start gap-3 border-t border-border-muted px-4 py-1.5 first:border-t-0' },
+        st, el('span', { class: 'min-w-0 flex-1 truncate font-mono text-xs leading-5', text: labelOf(it), title: labelOf(it) }), err);
+      rows.set(it, { li, st, err, status: 'queued' });
+      frag.append(li);
     }
-    host.append(el('div', { class: 'glass-strong p-4 space-y-3', role: 'region', 'aria-label': `${title} progress`, 'aria-live': 'polite' },
-      el('div', { class: 'flex flex-wrap items-center gap-3' },
-        el('h3', { class: 'font-semibold', text: title }), counter, status,
+    list.append(frag);
+    const progressEl = el('div', { class: 'Progress', role: 'progressbar', 'aria-label': `${title} progress`, 'aria-valuemin': '0', 'aria-valuemax': String(items.length), 'aria-valuenow': '0' }, bar);
+    host.append(el('div', { class: 'Box', role: 'region', 'aria-label': `${title} progress` },
+      el('div', { class: 'Box-header flex-wrap' },
+        el('h3', { class: 'Box-title', text: title }), counter, el('span', { 'aria-live': 'polite' }, status),
         el('div', { class: 'ml-auto flex flex-wrap gap-2' }, cancelBtn, retryBtn, logBtn, closeBtn)),
-      el('div', { class: 'progress', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(items.length), 'aria-valuenow': '0' }, bar),
-      list));
-    const progressEl = bar.parentElement;
+      el('div', { class: 'px-4 pt-3 pb-3' }, progressEl),
+      el('div', { class: 'border-t border-border-muted' }, list)));
+
 
     const onProgress = ({ done, total, results, rateWait }) => {
       counter.textContent = `${formatNumber(done)} / ${formatNumber(total)}`;
@@ -163,13 +171,17 @@ export class BulkPanel {
       progressEl.setAttribute('aria-valuenow', String(done));
       if (rateWait) status.textContent = `GitHub rate limit hit – waiting ${rateWait}s…`;
       else if (!signal.aborted) status.textContent = 'Running…';
+      if (results.some((r) => r.status === 'failed')) bar.classList.add('is-danger');
       for (const r of results) {
         const row = rows.get(r.item);
         if (!row) continue;
-        row.st.className = `${STATUS_CLASS[r.status]} w-20 shrink-0 text-xs`;
-        row.st.textContent = STATUS_TEXT[r.status];
-        row.err.textContent = r.status === 'failed' || r.status === 'waiting' ? (r.error || '') : '';
-        if (r.status === 'running') row.li.scrollIntoView?.({ block: 'nearest' });
+        if (row.status !== r.status) {
+          row.status = r.status;
+          row.st.replaceChildren(statusIcon(r.status));
+          if (r.status === 'running') row.li.scrollIntoView?.({ block: 'nearest' });
+        }
+        const e = r.status === 'failed' || r.status === 'waiting' ? (r.error || '') : '';
+        if (row.err.textContent !== e) row.err.textContent = e;
       }
     };
 
@@ -183,6 +195,8 @@ export class BulkPanel {
     const finishedAt = Date.now();
     const ok = results.filter((r) => r.status === 'ok').length;
     const failed = results.filter((r) => r.status === 'failed');
+    bar.classList.toggle('is-danger', failed.length > 0);
+    bar.classList.toggle('is-success', failed.length === 0 && !cancelled);
     status.textContent = cancelled ? `Cancelled – ${ok} done, ${failed.length} failed` : failed.length ? `Finished – ${ok} ok, ${failed.length} failed` : `Finished – ${ok} ok`;
     cancelBtn.disabled = true; show(cancelBtn, false);
     show(closeBtn, true); show(logBtn, true);

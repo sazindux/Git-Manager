@@ -1,5 +1,6 @@
 // Accessible modal dialogs with focus trap and safety confirmations. Text only via textContent.
 import { el, formatNumber } from './ui.js';
+import { icon } from './icons.js';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -7,7 +8,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
  * Open a modal. `build({ close, setConfirmEnabled, confirmBtn })` returns body nodes.
  * Resolves with the value passed to `close(value)`; Esc / backdrop / Cancel resolve `null`.
  */
-export function openModal({ title, build, confirmLabel = 'Confirm', confirmClass = 'btn btn-primary', cancelLabel = 'Cancel', width = 'max-w-lg', danger = false }) {
+export function openModal({ title, build, confirmLabel = 'Confirm', confirmClass = 'btn btn-primary', cancelLabel = 'Cancel', width = '', danger = false }) {
   const root = document.getElementById('modal-root');
   const previouslyFocused = document.activeElement;
   return new Promise((resolve) => {
@@ -22,18 +23,19 @@ export function openModal({ title, build, confirmLabel = 'Confirm', confirmClass
       resolve(value);
     };
     const confirmBtn = el('button', { type: 'button', class: confirmClass }, confirmLabel);
-    const cancelBtn = el('button', { type: 'button', class: 'btn btn-ghost', onClick: () => close(null) }, cancelLabel);
+    const cancelBtn = el('button', { type: 'button', class: 'btn', onClick: () => close(null) }, cancelLabel);
+    const closeX = el('button', { type: 'button', class: 'btn btn-octicon', 'aria-label': 'Close dialog', onClick: () => close(null) }, icon('x'));
     const setConfirmEnabled = (v) => { confirmBtn.disabled = !v; };
     const titleId = `modal-title-${Math.random().toString(36).slice(2, 8)}`;
-    const body = el('div', { class: 'space-y-4 text-sm text-slate-200' });
+    const body = el('div', { class: 'Overlay-body' });
     const dialog = el('div', {
-      class: `glass-strong w-full ${width} p-6 ${danger ? 'border-rose-400/40' : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId, tabindex: '-1',
+      class: `Overlay${width === 'wide' ? ' Overlay--wide' : ''}`, role: danger ? 'alertdialog' : 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId, tabindex: '-1',
     },
-      el('h2', { id: titleId, class: `text-lg font-semibold ${danger ? 'text-rose-200' : ''}`, text: title }),
-      el('div', { class: 'mt-4' }, body),
-      el('div', { class: 'mt-6 flex flex-wrap justify-end gap-2' }, cancelBtn, confirmBtn));
+      el('div', { class: 'Overlay-header' }, el('h2', { id: titleId, class: 'Overlay-title', text: title }), closeX),
+      body,
+      el('div', { class: 'Overlay-footer' }, cancelBtn, confirmBtn));
     const overlay = el('div', {
-      class: 'fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4',
+      class: 'Overlay-backdrop',
       onMousedown: (ev) => { if (ev.target === overlay) close(null); },
     }, dialog);
     const result = build({ close, setConfirmEnabled, confirmBtn, body });
@@ -58,18 +60,23 @@ export function openModal({ title, build, confirmLabel = 'Confirm', confirmClass
   });
 }
 
+const FLASH_ICON = { error: 'alert', warn: 'alert', success: 'check', info: 'info' };
+function flash(kind, children) {
+  return el('div', { class: `flash flash-${kind}` }, icon(FLASH_ICON[kind] || 'info'), el('div', {}, ...children));
+}
+
 function repoList(repos) {
-  const ul = el('ul', { class: 'max-h-48 overflow-y-auto rounded-lg border border-white/10 bg-ink-900/60 p-2 font-mono text-xs' });
-  for (const r of repos) ul.append(el('li', { class: 'truncate py-0.5', text: r.full_name || r.name, title: r.full_name || r.name }));
+  const ul = el('ul', { class: 'repo-chip-list', 'aria-label': 'Affected repositories' });
+  for (const r of repos) ul.append(el('li', { text: r.full_name || r.name, title: r.full_name || r.name }));
   return ul;
 }
 
 function phraseInput({ phrase, label, onChange }) {
   const id = `phrase-${Math.random().toString(36).slice(2, 8)}`;
-  const input = el('input', { id, class: 'input font-mono', type: 'text', autocomplete: 'off', spellcheck: 'false', 'aria-describedby': `${id}-hint` });
+  const input = el('input', { id, class: 'form-control form-control-block font-mono', type: 'text', autocomplete: 'off', spellcheck: 'false', 'aria-describedby': `${id}-hint` });
   input.addEventListener('input', () => onChange(input.value.trim() === phrase));
-  return el('div', { class: 'space-y-1' },
-    el('label', { for: id, class: 'block text-slate-300' }, label, ' ', el('code', { class: 'rounded bg-white/10 px-1 font-mono text-slate-100 select-all', text: phrase })),
+  return el('div', {},
+    el('label', { for: id, class: 'form-label font-normal' }, label, ' ', el('code', { class: 'phrase font-mono', text: phrase }), ' to confirm'),
     input, el('p', { id: `${id}-hint`, class: 'sr-only', text: `Type the phrase ${phrase} exactly to enable the confirm button.` }));
 }
 
@@ -79,7 +86,7 @@ export function confirmDelete(repos) {
   const phrase = `delete ${n} repositories`;
   return openModal({
     title: `Delete ${formatNumber(n)} ${n === 1 ? 'repository' : 'repositories'}`,
-    confirmLabel: 'Delete permanently', confirmClass: 'btn btn-danger', danger: true,
+    confirmLabel: 'Delete permanently', confirmClass: 'btn btn-danger-solid', danger: true,
     build: ({ setConfirmEnabled, confirmBtn }) => {
       let phraseOk = false; let ack = false; let countdownDone = false;
       const baseLabel = 'Delete permanently';
@@ -92,14 +99,14 @@ export function confirmDelete(repos) {
         if (left <= 0) { clearInterval(timer); countdownDone = true; confirmBtn.textContent = baseLabel; update(); }
         else confirmBtn.textContent = `${baseLabel} (${left})`;
       }, 1000);
-      const chk = el('input', { type: 'checkbox', class: 'mt-0.5 h-4 w-4 rounded accent-rose-500' });
+      const chk = el('input', { type: 'checkbox', class: 'mt-0.5 shrink-0' });
       chk.addEventListener('change', () => { ack = chk.checked; update(); });
       return [
-        el('p', { class: 'text-rose-200' }, 'This permanently deletes the repositories below, including all code, issues, pull requests, wikis and releases. ',
-          el('strong', { text: 'This cannot be undone.' })),
+        flash('error', ['This permanently deletes the repositories below, including all code, issues, pull requests, wikis and releases. ',
+          el('strong', { text: 'This cannot be undone.' })]),
         repoList(repos),
         phraseInput({ phrase, label: 'Type', onChange: (ok) => { phraseOk = ok; update(); } }),
-        el('label', { class: 'flex items-start gap-2 text-slate-300' }, chk, 'I understand this cannot be undone'),
+        el('label', { class: 'flex items-start gap-2' }, chk, 'I understand this cannot be undone'),
       ];
     },
   });
@@ -110,12 +117,11 @@ export function confirmMakePublic(repos) {
   const phrase = 'make public';
   return openModal({
     title: `Make ${formatNumber(repos.length)} ${repos.length === 1 ? 'repository' : 'repositories'} public`,
-    confirmLabel: 'Make public', confirmClass: 'btn btn-warn', danger: true,
+    confirmLabel: 'Make public', confirmClass: 'btn btn-danger-solid', danger: true,
     build: ({ setConfirmEnabled }) => {
       setConfirmEnabled(false);
       return [
-        el('p', { class: 'rounded-lg border border-rose-400/40 bg-rose-500/10 p-3 text-rose-200' },
-          'Warning: all code, commit history, issues and secrets accidentally committed in these repositories become visible to everyone on the internet immediately.'),
+        flash('error', ['Warning: all code, commit history, issues and secrets accidentally committed in these repositories become visible to everyone on the internet immediately.']),
         repoList(repos),
         phraseInput({ phrase, label: 'Type', onChange: setConfirmEnabled }),
       ];
@@ -127,11 +133,11 @@ export function confirmMakePublic(repos) {
 export function confirmTransfer(repos, newOwner) {
   return openModal({
     title: `Transfer ${formatNumber(repos.length)} ${repos.length === 1 ? 'repository' : 'repositories'} to ${newOwner}`,
-    confirmLabel: 'Start transfer', confirmClass: 'btn btn-warn', danger: true,
+    confirmLabel: 'Start transfer', confirmClass: 'btn btn-danger-solid', danger: true,
     build: ({ setConfirmEnabled }) => {
       setConfirmEnabled(false);
       return [
-        el('p', {}, 'Ownership moves to ', el('strong', { class: 'font-mono', text: newOwner }), '. Transfers to a personal account must be accepted by the recipient within one day; transfers to an organization you administer complete immediately. Repository names are kept.'),
+        flash('warn', ['Ownership moves to ', el('strong', { class: 'font-mono', text: newOwner }), '. Transfers to a personal account must be accepted by the recipient within one day; transfers to an organization you administer complete immediately. Repository names are kept.']),
         repoList(repos),
         phraseInput({ phrase: newOwner, label: 'Type the target owner', onChange: setConfirmEnabled }),
       ];
@@ -153,8 +159,8 @@ export function promptText({ title, label, placeholder = '', hint = '', validate
     title, confirmLabel,
     build: ({ setConfirmEnabled, confirmBtn }) => {
       const id = `prompt-${Math.random().toString(36).slice(2, 8)}`;
-      const err = el('p', { class: 'text-xs text-rose-300', 'aria-live': 'polite' });
-      const input = el('input', { id, class: 'input', type: 'text', placeholder, autocomplete: 'off', spellcheck: 'false' });
+      const err = el('p', { class: 'note text-danger', 'aria-live': 'polite' });
+      const input = el('input', { id, class: 'form-control form-control-block', type: 'text', placeholder, autocomplete: 'off', spellcheck: 'false' });
       input.value = initial;
       const check = () => {
         const v = input.value.trim();
@@ -166,7 +172,7 @@ export function promptText({ title, label, placeholder = '', hint = '', validate
       input.addEventListener('input', check);
       input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !confirmBtn.disabled) confirmBtn.click(); });
       check();
-      return [el('label', { for: id, class: 'block text-slate-300', text: label }), input, hint ? el('p', { class: 'text-xs text-slate-400', text: hint }) : null, err].filter(Boolean);
+      return [el('div', {}, el('label', { for: id, class: 'form-label', text: label }), input, hint ? el('p', { class: 'note mt-1', text: hint }) : null, err)].filter(Boolean);
     },
   });
 }
