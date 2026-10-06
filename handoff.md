@@ -1,5 +1,5 @@
-# HANDOFF — T12 DEPLOY HOTFIX IN PROGRESS
-Updated: 2026-10-06 · Last task touched: T12 · Target: main via PR #1 (genspark_ai_developer)
+# HANDOFF — UI UPGRADE PHASE (U0–U6)
+Updated: 2026-10-06 · Last task touched: U0 · Work directly on `main` (Vercel auto-deploys on push)
 
 ## Task status
 | ID | Task | Status | Commit |
@@ -16,27 +16,28 @@ Updated: 2026-10-06 · Last task touched: T12 · Target: main via PR #1 (genspar
 | T9 | Analytics | done | 994c346 |
 | T10 | Security & quality review | done | 89d3230 |
 | T11 | Docs & final QA | done | 8143228 |
-| T12 | Fix /api 404 on Vercel | in-progress | [PR #1](https://github.com/sazindux/Git-Manager/pull/1), user production verification pending |
+| T12 | Fix /api 404 on Vercel | done (user: backend live) | cc0daa5 |
+| U0 | Audit, Primer tokens & CSS foundation | done | 9c74392 |
+| U1 | App shell & landing page | pending | |
+| U2 | Repositories list + performance core | pending | |
+| U3 | Dialogs, bulk panel, toasts | pending | |
+| U4 | Cleanup tab | pending | |
+| U5 | Analytics tab | pending | |
+| U6 | Performance pass, polish & final QA | pending | |
 
 ## Current / next action
-T0–T11 remain done; do not redo/refactor them. T12: investigate Vercel platform 404 at
-`https://gitmanage.vercel.app/api/auth/login`. Dashboard evidence C–F was not supplied.
-Public probes (2026-10-06): `/` 200 HTML; `/api/health` 200 `{"ok":true}`;
-`/api/nope` app JSON 404 with no-store; `/api/auth/login` and `/api/nope/deep` Vercel
-404 with `x-vercel-error: NOT_FOUND`. The function exists; nested platform path matching fails.
-Diagnostics added: first middleware `X-GM-Function: 1`; health reports edge/node. Tests cover
-health on both runtimes, app 404, nested login and CSRF rejection. Build + 67 tests pass locally.
-Routing attempt 1: Approach B (classic api/), consistent with documented project setup "Other"
-and functioning shallow API routes. Dashboard preset remains unknown; `framework: null` pins Other
-per current Vercel docs. Replaced catch-all with `api/index.js` Node fetch export and explicit
-`/api/:path*` → `/api/index` rewrite. Build + 68 tests pass, including the actual entry's fetch handler.
-Next: verify PR #1 is merged into main, redeploy that latest main on Vercel, confirm nested login + health headers.
-Keep T12 in-progress until the user confirms production works; do not attempt a second approach yet.
-No OAuth/security/dependency changes. Do not claim live routing verified until user redeploys.
-Use the required development branch + PR workflow; production verification remains user-side.
-T12 QA: `npm run build` OK, `npm test` 68/68 pass on Node 22.23.2; security headers/build/output/dependencies
-compared unchanged. Build only warns of outdated caniuse-lite (not updated; out of scope).
-T11 historical QA: 64/64 tests; UI CSP-clean in mock mode (Playwright, 0 console errors); not rerun for this routing-only fix.
+UI phase (frontend only: `public/`, `src/styles.css`, `tailwind.config.js`, `scripts/mock-github.js`, tests).
+Next: **U1** — rewrite `public/index.html` shell (header bar #010409 + neutral `appMark()` + `APP_NAME`,
+rate pill, avatar → `createMenu` profile dropdown with scopes + Sign out, UnderlineNav tabs with `.Counter`),
+landing page (centered, Box, green sign-in button w/ `mark-github` icon), update `main.js` (tabs use
+`aria-selected` on `.UnderlineNav-item`; keep `[data-tab]` + `setTab`). Introduce `APP_NAME` in a new `config.js`.
+U0 baseline audit (lag sources, confirmed in code): body had 3 radial gradients + `background-attachment: fixed`;
+`.glass/.glass-strong`, sticky header and grid selection bar used `backdrop-filter`; grid `renderRows()` does
+`clear(tbody)` + rebuilds every cell on each `repos`/`selection` event; per-row listeners; analytics + cleanup
+re-render on every `repos` event even when hidden; `.input` had `w-full` → stacked filter selects.
+All gradients/blur removed in U0; render-path issues are U2/U4/U5 work.
+Legacy class aliases (`.glass .input .badge* .btn-ghost .btn-warn .progress*`, Tailwind `ink-*`) map onto the
+new components in `src/styles.css` so old markup still renders; delete them as each screen is rebuilt (U6 final).
 
 ## Security checklist (T10, verified 2026-10-05)
 - [x] No `console.*` in lib/ api/ public/ (only scripts/dev.sh generates a dev secret locally).
@@ -69,7 +70,11 @@ T11 historical QA: 64/64 tests; UI CSP-clean in mock mode (Playwright, 0 console
   - `lib/repos.js` → `trimRepo`, `validateTarget` middleware (sets `c.var.target = {owner, repo, path}`), `listRepos`, `patchRepo`, `deleteRepo`, `mergeTopics` (pure), `putTopics`, `transferRepo`, `emptyCheck`, `listBranches` (GET repo → default branch; paginate branches ≤10 pages; per branch compare + commit date), `deleteBranch` (fetches repo + branch first; 409 `protected_branch` for default/protected), helpers `readJsonBody(c)`, `bad(c, msg)` (400 `bad_request`).
   - `lib/branches.js` → pure `classifyBranch(b, staleDays, now)` → `{merged, stale, ageDays, deletable}` (deletable = !default && !protected), `classifyBranches`, `DEFAULT_STALE_DAYS=90`.
   - `api/index.js` → thin Vercel Node Web Standard fetch entry; passes Request unchanged.
-  - `src/styles.css` → Tailwind + components: `.glass .glass-strong .btn .btn-primary .btn-ghost .btn-danger .btn-warn .input .badge .badge-ok .badge-warn .badge-danger .progress .progress-bar`.
+  - `src/styles.css` → Primer-dark `:root` tokens + `@layer components`: `.btn` (+`-primary -danger -danger-solid -invisible -octicon -link -sm -lg -block`), `.form-control` (+`-block -sm`, `select.` chevron via data-URI), `.search-input`, `.Box/-header/-title/-body/-row/-footer/-row--hover`, `.list-row` (content-visibility), `.Label` (+`--accent/success/attention/danger/done`), `.Counter`, `.topic`, `.lang-dot`, `.flash` (+`-success/-warn/-error/-toast`), `.dropdown/-menu/-item/-header/-divider`, `.UnderlineNav/-item`, `.SegmentedControl`, `.Pagination/-item`, `.Blankslate`, `.Progress/-item`, `.avatar`, `.app-mark`, text helpers, `.spinner`; legacy aliases at bottom.
+  - `tailwind.config.js` → colors `canvas{,subtle,inset}`, `border{,muted}`, `fg{,muted,subtle}`, `accent{,link,emphasis}`, `success`, `danger`, `attention`, `done` (+ legacy `ink-*`); system font stacks.
+  - `public/assets/js/icons.js` → `icon(name, {size, class, label})` Octicon-style SVG (names in `ICON_NAMES`), `spinner()`, `appMark(size)` neutral logo.
+  - `public/assets/js/langcolors.js` → `LANG_COLORS`, `langColor(name)` (linguist or hashed hsl), `langDot(name)` (CSSOM bg).
+  - `public/assets/js/menu.js` → `createMenu({label, icon, buttonClass, align, items, ariaLabel, selectable, title, buttonContent})` → `{root, button, menu, setLabel, refresh, open, close}`; items `{label, icon, danger, checked, disabled, meta, dot, multi, keepOpen, onSelect}` | `{divider}` | `{header}` | `{text}`; Arrow/Home/End/Esc/Tab, click-outside, focus return; one menu open at a time.
   - `public/index.html` → views `#view-loading/#view-landing/#view-dashboard`, header (avatar `#user-avatar`, `#user-login`, `#rate-badge`, `#btn-logout`), tab buttons `[data-tab]`, sections `#tab-repos` (`#repos-panel`), `#tab-cleanup`, `#tab-analytics`, `#toasts`, `#modal-root`. Script: `/assets/js/main.js` (module).
   - `public/assets/js/ui.js` → `el(tag, attrs, ...children)` (attrs: class, text, onClick…, dataset), `append`, `clear`, `show(node, bool)`, `$`, `$$`, `svg`, `formatNumber`, `formatBytesFromKB`, `formatDate`, `daysSince`, `debounce`, `sleep(ms, signal)`.
   - `public/assets/js/state.js` → `state` {user, repos, selection:Set, rate, activeTab}, `on/emit` events (`user`, `rate`, `repos`, `selection`, `tab`, `unauthorized`), `hasScope`, `setUser`, `setRate`, `setRepos`, `removeRepos`, `updateRepo`, `setSelection`, `toggleSelected`, `clearSelection`, `selectedRepos`, `setTab`.
@@ -83,15 +88,18 @@ T11 historical QA: 64/64 tests; UI CSP-clean in mock mode (Playwright, 0 console
   - `public/assets/js/bulk.js` → pure `runBulk(items, fn, {concurrency, minGapMs, signal, onProgress, now, sleep})` → `{results:[{item,key,status,value,error,errorCode,attempts}], cancelled}`; `writeOptions()` (1 worker, 1000 ms gap), `readOptions()` (4 workers); `BulkPanel.run({title, action, items, perItemFn, options, onItemOk, onFinish})` renders progress/cancel/retry/log; `buildLog`, `downloadJson`, `labelOf`.
   - `public/assets/js/modals.js` → `openModal({title, build, confirmLabel, confirmClass, danger})` (focus trap, Esc/backdrop close → null), `confirmDelete(repos)`, `confirmMakePublic(repos)`, `confirmTransfer(repos, newOwner)`, `confirmSimple({title, message, repos, confirmLabel, confirmClass})`, `promptText({title, label, validate, hint})` → string|null.
   - `public/assets/js/grid.js` → `loadAllRepos(onProgress)` (pages until `hasMore` false → `setRepos`), pure `applyFilters(repos, filters, login)`, `affiliationOf`, `isLikelyEmpty` (uses `repo.isEmpty` if set by cleanup scan, else size===0), `initGrid(panel)` (toolbar, selection bar with action buttons emitting `bulk-action`, table 50/page, shift-click, select-all-filtered, Reload). Listens to `repos`/`selection` events so later mutations re-render automatically.
-  - `scripts/dev-server.js` → Node static+API server applying vercel.json headers; `GM_MOCK=1` loads `scripts/mock-github.js` (in-memory fake GitHub, 240 repos). `npm run dev:mock` (scripts/dev.sh) = zero-config local run. In mock mode `/api/auth/login` redirects straight to the callback (no GitHub hop), so opening `/api/auth/login` logs you in.
+  - `scripts/dev-server.js` → Node static+API server applying vercel.json headers; `GM_MOCK=1` loads `scripts/mock-github.js` (in-memory fake GitHub; `GM_MOCK_REPOS` default 240, e.g. 1500; varied names/descriptions/topics/20 languages/forks/archived/empty/templates). `npm run dev:mock` (scripts/dev.sh) = zero-config local run. In mock mode `/api/auth/login` redirects straight to the callback (no GitHub hop), so opening `/api/auth/login` logs you in.
   - `test/app.test.js` → smoke tests using `app.request()`; `test/grid.test.js` → filter/sort tests; `test/bulk.test.js` → runner sequencing/gap/cancel/rate-retry with a virtual clock (both stub `globalThis.document`); `test/mutations.test.js` → PATCH/DELETE/topics routes + CSRF (helper `authed(path, {method, json})` adds CSRF+Origin); `test/cleanup.test.js` → classifier + empty-check/branches/delete-branch routes; `test/analytics.test.js` → computeAnalytics/topLanguages.
 - Implemented endpoints: `GET /api/health`, `GET /api/auth/login`, `GET /api/auth/callback`, `POST /api/auth/logout`, `GET /api/me`, `GET /api/repos?page=N` → `{page, items, hasMore, rate}`, `PATCH /api/repos/:o/:r` (`{private?, archived?}` → `{repo, rate}`), `DELETE /api/repos/:o/:r` (204), `PUT /api/repos/:o/:r/topics` (`{mode, names}` → `{topics, rate}`), `POST /api/repos/:o/:r/transfer` (`{new_owner, new_name?}` → 202 `{pending, repo, rate}`), `GET /api/repos/:o/:r/empty-check` → `{empty, rate}`, `GET /api/repos/:o/:r/branches?stale_days=N` → `{defaultBranch, staleDays, branches:[{name, protected, isDefault, aheadBy, behindBy, lastCommitDate, merged, stale, ageDays, deletable}], rate}`, `DELETE /api/repos/:o/:r/branches/:branch{.+}` (204; 409 `protected_branch`).
 - Error JSON shape: `{error: <code>, message, status, retryAfter?, rate?}`; codes: unauthorized, rate_limited(429), protected_branch(409), forbidden, not_found, conflict, unprocessable, upstream_error, network_error, csrf, bad_origin, invalid_target.
 - Conventions: tests use `app.request(url, init, ENV)` with mocked `globalThis.fetch` (see test/repos.test.js helpers `authed`, `mockFetch`). Test script: `node --test "test/**/*.test.js"`.
   Built CSS `public/assets/styles.css` is gitignored (Vercel builds it via `npm run build`).
-- Tailwind config uses `export default` (package is ESM); color palette `ink-950/900/800/700`.
+- Tailwind config uses `export default` (package is ESM).
 
 ## Decisions & deviations from the prompt
+- U0: work committed straight to `main` (UI-phase instruction), not the old PR branch. Test count is 68 (not 64; T12 added 4).
+- U0: Playwright is not installed in the sandbox (no npm/pip package); only the remote console-capture tool is available → mock mode verified 0 console errors on 1500 repos; timings unmeasured so far.
+- U0: the sed pass added base `btn` to every legacy `btn-*` usage because new variants are modifiers (Primer style), not standalone.
 - T12: chose B, not Hono zero-config A. Live shallow routes prove a deployed API function while nested
   paths miss it; README/handoff prescribe Other. Dashboard C is unknown, so explicitly pin Other rather
   than infer it. No root Hono entry or second competing deployment strategy added.
@@ -113,31 +121,10 @@ T11 historical QA: 64/64 tests; UI CSP-clean in mock mode (Playwright, 0 console
 
 ## Known issues / unverified
 - E2E of cleanup + analytics tabs verified only against the mock GitHub (Playwright, zero console errors); real-GitHub edge cases (e.g. compare 404 on unrelated histories → aheadBy null → not merged) handled but untested live.
-- T12: original production nested-only platform 404 reproduced. Node + explicit rewrite passes local
-  tests but awaits real deploy/user verification. No Vercel dashboard/build access; C–F remain unknown.
-  GitHub token cannot read statusCheckRollup (integration permission error); no remote CI result claimed.
-  Next check: latest Production Ready deployment must contain PR #1's main commit and list `api/index`
-  as a Node function in Functions/Resources (or its function build line). Root Directory must be blank;
-  effective preset Other (`framework: null`), build `npm run build`, output `public`, Node 22.x or newer.
-  If deployment URL works but gitmanage.vercel.app fails, check domain assignment to that Production deployment.
-- README still describes the superseded edge entry; intentionally untouched under T12 scope. This handoff's
-  Entry pattern is authoritative. No further refactor/dependency/feature changes.
+- T12 resolved (user confirms backend + all features work live). README still mentions the old edge entry; fix in U6 docs pass.
 
 ## User actions required
-- [ ] Run README "Manual QA checklist" against the live deployment with a throwaway repo.
-- [ ] Vercel → Project → Settings → Build & Deployment: Root Directory blank, Other, build `npm run build`,
-  output `public`, Node 22.x+. Deployments → latest main → Redeploy; verify Production Ready + `api/index` Node resource.
-- [ ] `https://gitmanage.vercel.app/api/health` → `{"ok":true,"runtime":"node"}` and `X-GM-Function: 1`.
-- [ ] Click Sign in with GitHub; must reach GitHub or an app redirect, not Vercel NOT_FOUND.
-  `/?error=server_config`: set nonempty Production `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`,
-  `SESSION_SECRET` (base64 of 32 random bytes), then redeploy. Never paste secret values.
-- [ ] GitHub OAuth App callback exactly `https://gitmanage.vercel.app/api/auth/callback`; homepage and
-  optional `APP_URL` exactly `https://gitmanage.vercel.app` (no trailing path). Check these if redirect_uri mismatch.
-- [ ] After authorization, `bad_state`: state cookie missing/mismatched, inspect Secure/SameSite/domain.
-  `bad_code`: this codebase means missing/invalid callback code; retry login. Token exchange failure is
-  actually named `exchange_failed` here (not token_exchange): verify matching client ID/secret, retry fresh login.
-- [ ] If still failing, paste health status/body + X-GM-Function, login status/error (redact cookies, codes,
-  state and tokens), deployment commit/Ready status, Framework/Root/Output settings, and build/resource line for `api/index`.
+- [ ] After each U-task push, check https://gitmanage.vercel.app (Vercel auto-deploys main).
 
 ## How to run / verify
 ```
