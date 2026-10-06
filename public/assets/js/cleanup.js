@@ -13,6 +13,7 @@ import { createMenu } from './menu.js';
 const repoPath = (r) => `/api/repos/${encodeURIComponent(r.owner.login)}/${encodeURIComponent(r.name)}`;
 const plural = (n, one, many) => (n === 1 ? one : many);
 const DEFAULT_STALE_DAYS = 90;
+const CHUNK = 100;
 
 // UI-side mirror of lib/branches.js: default/protected branches are never deletable.
 export function isBranchDeletable(b) {
@@ -120,7 +121,7 @@ function progressBar() {
   const bar = el('div', { class: 'Progress', hidden: true, role: 'progressbar', 'aria-valuemin': '0', 'aria-label': 'Scan progress' }, item);
   return {
     bar,
-    set(done, total) { item.style.width = `${total ? Math.round((done / total) * 100) : 0}%`; bar.setAttribute('aria-valuemax', String(total)); bar.setAttribute('aria-valuenow', String(done)); },
+    set(done, total) { item.classList.toggle('is-success', total > 0 && done >= total); item.style.width = `${total ? Math.round((done / total) * 100) : 0}%`; bar.setAttribute('aria-valuemax', String(total)); bar.setAttribute('aria-valuenow', String(done)); },
   };
 }
 
@@ -156,15 +157,26 @@ function repoBox({ repos, selected, extraMeta = () => [], actionLabel, onDelete 
   const header = el('div', { class: 'Box-header' }, allChk, count, delBtn);
   const list = el('ul', { class: 'm-0 p-0', 'aria-label': 'Repositories' });
   const checks = new Map();
-  const frag = document.createDocumentFragment();
-  for (const r of repos) {
-    const chk = el('input', { type: 'checkbox', class: 'mt-1 shrink-0', 'aria-label': `Select ${r.full_name}`, dataset: { id: String(r.id) } });
-    chk.checked = selected.has(r.id);
-    const li = el('li', { class: `Box-row Box-row--hover list-row flex gap-3${chk.checked ? ' is-selected' : ''}` }, chk, repoRowBody(r, extraMeta));
-    checks.set(r.id, { chk, li });
-    frag.append(li);
-  }
-  list.replaceChildren(frag);
+  const more = el('button', { type: 'button', class: 'btn btn-sm' });
+  const footer = el('div', { class: 'Box-footer flex justify-center py-2', hidden: true }, more);
+  let rendered = 0;
+  const renderMore = () => { // chunked: keeps tab switches fast with hundreds of rows
+    const frag = document.createDocumentFragment();
+    for (const r of repos.slice(rendered, rendered + CHUNK)) {
+      const chk = el('input', { type: 'checkbox', class: 'mt-1 shrink-0', 'aria-label': `Select ${r.full_name}`, dataset: { id: String(r.id) } });
+      chk.checked = selected.has(r.id);
+      const li = el('li', { class: `Box-row Box-row--hover list-row flex gap-3${chk.checked ? ' is-selected' : ''}` }, chk, repoRowBody(r, extraMeta));
+      checks.set(r.id, { chk, li });
+      frag.append(li);
+    }
+    rendered = Math.min(repos.length, rendered + CHUNK);
+    list.append(frag);
+    const left = repos.length - rendered;
+    show(footer, left > 0);
+    more.textContent = `Show ${formatNumber(Math.min(CHUNK, left))} more (${formatNumber(left)} hidden)`;
+  };
+  more.addEventListener('click', renderMore);
+  renderMore();
   const sync = () => {
     const n = repos.reduce((a, r) => a + (selected.has(r.id) ? 1 : 0), 0);
     allChk.checked = repos.length > 0 && n === repos.length;
@@ -185,13 +197,13 @@ function repoBox({ repos, selected, extraMeta = () => [], actionLabel, onDelete 
   allChk.addEventListener('change', () => {
     for (const r of repos) {
       if (allChk.checked) selected.add(r.id); else selected.delete(r.id);
-      const c = checks.get(r.id); c.chk.checked = allChk.checked; c.li.classList.toggle('is-selected', allChk.checked);
+      const c = checks.get(r.id); if (c) { c.chk.checked = allChk.checked; c.li.classList.toggle('is-selected', allChk.checked); }
     }
     sync();
   });
   delBtn.addEventListener('click', () => onDelete(repos.filter((r) => selected.has(r.id))));
   sync();
-  return el('div', { class: 'Box' }, header, list);
+  return el('div', { class: 'Box' }, header, list, footer);
 }
 
 async function deleteRepos(repos, actionLabel) {
@@ -453,7 +465,7 @@ function renderResults(host) {
   const list = el('ul', { class: 'm-0 p-0', 'aria-label': 'Branches' });
   const updateBar = () => {
     const n = branchSelection.size;
-    count.textContent = n ? `${formatNumber(n)} ${plural(n, 'branch', 'branches')} selected` : `${formatNumber(rows.filter((r) => r.b).length)} ${plural(rows.length, 'branch', 'branches')}`;
+    count.textContent = n ? `${formatNumber(n)} ${plural(n, 'branch', 'branches')} selected` : `${formatNumber(rows.filter((r) => r.b).length)} ${plural(rows.filter((r) => r.b).length, 'branch', 'branches')}`;
     const reason = hasScope('repo') ? '' : 'Missing OAuth scope repo';
     delBtn.disabled = n === 0 || !!reason; delBtn.title = reason || (n ? '' : 'Select branches first');
     const m = selectable.reduce((a, r) => a + (branchSelection.has(keyOf(r.repo.id, r.b.name)) ? 1 : 0), 0);

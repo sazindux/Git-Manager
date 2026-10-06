@@ -262,8 +262,8 @@
   }
   li:first-child > .picker-item { border-top: 0; }
   .picker-item:hover { background-color: var(--canvas-subtle); }
-  .fill-muted { fill: var(--fg-muted); }
-  .fill-danger { fill: var(--danger-fg); }
+  .octicon.fill-muted { fill: var(--fg-muted); }
+  .octicon.fill-danger { fill: var(--danger-fg); }
 
   /* ---------- Segmented control ---------- */
   .SegmentedControl { display: inline-flex; padding: 2px; gap: 2px; background-color: var(--btn-bg); border: 1px solid var(--border-default); border-radius: var(--radius); max-width: 100%; overflow-x: auto; }
