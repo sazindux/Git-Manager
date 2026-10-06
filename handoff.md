@@ -135,7 +135,7 @@ event, per-row listeners, hidden tabs re-rendering on every `repos`, `.input w-f
 - T12 resolved (user confirms backend + all features work live). README entry wording fixed in U6.
 
 ## User actions required
-- [ ] After each U-task push, check https://gitmanage.vercel.app (Vercel auto-deploys main).
+- [ ] After each U-task push, check https://gitmanage.vercel.app (Vercel auto-deploys main)
 
 ## How to run / verify
 ```
