@@ -66,6 +66,19 @@ export function formatDate(iso) {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+/** '3 days ago', 'yesterday', 'on Mar 5, 2024' (GitHub-like relative time). */
+export function relativeTime(iso, now = Date.now()) {
+  const t = typeof iso === 'number' ? iso : Date.parse(iso || '');
+  if (!t || Number.isNaN(t)) return 'never';
+  const s = Math.max(0, Math.round((now - t) / 1000));
+  if (s < 60) return 'just now';
+  const m = Math.round(s / 60); if (m < 60) return `${m} minute${m === 1 ? '' : 's'} ago`;
+  const h = Math.round(m / 60); if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`;
+  const d = Math.round(h / 24); if (d === 1) return 'yesterday';
+  if (d < 30) return `${d} days ago`;
+  return `on ${formatDate(new Date(t).toISOString())}`;
+}
+
 export function daysSince(iso, now = Date.now()) {
   if (!iso) return Infinity;
   const t = new Date(iso).getTime();

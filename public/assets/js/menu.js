@@ -10,9 +10,14 @@ let openMenu = null; // { close }
 
 function closeOpen() { openMenu?.close(false); }
 
-document.addEventListener('mousedown', (e) => {
-  if (openMenu && !openMenu.root.contains(e.target)) openMenu.close(false);
-}, true);
+let outsideListener = false;
+function ensureOutsideListener() {
+  if (outsideListener) return;
+  outsideListener = true;
+  document.addEventListener('mousedown', (e) => {
+    if (openMenu && !openMenu.root.contains(e.target)) openMenu.close(false);
+  }, true);
+}
 
 /**
  * createMenu({ label, icon?, buttonClass?, align?: 'left'|'right', items: () => Item[] | Item[], ariaLabel?, selectable? })
@@ -81,6 +86,7 @@ export function createMenu({ label, icon: iconName, buttonClass = 'btn', align =
   }
 
   function open(focusLast = false) {
+    ensureOutsideListener();
     if (openMenu && openMenu.root !== root) closeOpen();
     build();
     menu.hidden = false;
